@@ -1,6 +1,7 @@
 local function onAttach(effect, owner)
     local category, thingId = AttachedEffectManager.getDataThing(owner)
     local config = AttachedEffectManager.getConfig(effect:getId(), category, thingId)
+    if not config then return end
 
     if config.isThingConfig then
         AttachedEffectManager.executeThingConfig(effect, category, thingId)
@@ -14,6 +15,7 @@ end
 local function onDetach(effect, oldOwner)
     local category, thingId = AttachedEffectManager.getDataThing(oldOwner)
     local config = AttachedEffectManager.getConfig(effect:getId(), category, thingId)
+    if not config then return end
 
     if config.onDetach then
         config.onDetach(effect, oldOwner, config.__onDetach)

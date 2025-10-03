@@ -182,7 +182,11 @@ AttachedEffectManager = {
                 end
             end
         end
-        return __EFFECTS[id].config
+        local effect = __EFFECTS[id]
+        if not effect or not effect.config then
+            return { isThingConfig = false }
+        end
+        return effect.config
     end,
     executeThingConfig = function(effect, category, thingId)
         executeConfig(effect, AttachedEffectManager.getConfig(effect:getId(), category, thingId))
