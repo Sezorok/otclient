@@ -151,6 +151,18 @@ local function updateSlotOverlay(player, slot, item)
   if not slot or not SLOT_DIR[slot] then
     return
   end
+  -- Do not attach overlays while invisible; ensure slot is cleared
+  if player and player.isInvisible and player:isInvisible() then
+    if state.activeEffect[slot] then
+      local effId = state.activeEffect[slot]
+      if player:getAttachedEffectById(effId) then
+        player:detachEffectById(effId)
+      end
+      state.activeEffect[slot] = nil
+    end
+    state.current[slot] = nil
+    return
+  end
   if not item then
     if state.activeEffect[slot] then
       local effId = state.activeEffect[slot]
@@ -241,12 +253,13 @@ function controller:onGameStart()
       -- Invisibility guard: detach overlays while invisible
       local invNow = p.isInvisible and p:isInvisible() or false
       if invNow then
-        if not wasInvisible then
+        if next(state.activeEffect) ~= nil then
           detachAllOverlays(p)
-          wasInvisible = true
         end
+        wasInvisible = true
         return
-      elseif wasInvisible then
+      end
+      if wasInvisible then
         -- became visible again: restore overlays from inventory
         for s = InventorySlotFirst, InventorySlotLast do
           if SLOT_DIR[s] then
