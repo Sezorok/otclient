@@ -349,33 +349,50 @@ function controller:onGameStart()
 
       local dir = p.getDirection and p:getDirection() or South
       local dirIdx = DIR_INDEX[dir] or 2
-      -- advance frame for animated slots (e.g., body)
+      local walking = p.isWalking and p:isWalking() or false
+      -- advance frame only while walking; reset to frame 0 when idle
       state.animFrame = state.animFrame or {}
       for s, itemId in pairs(state.current) do
         local dp = findDirectionalPNGs(s, itemId)
         local frames = dp[dirIdx]
         local count = (type(frames) == 'table') and #frames or 0
         if count > 1 then
-          local nextIdx = ((state.animFrame[s] or 0) + 1) % count
-          state.animFrame[s] = nextIdx
+          if walking then
+            local nextIdx = ((state.animFrame[s] or 0) + 1) % count
+            state.animFrame[s] = nextIdx
+            switchDirEffect(p, s, itemId, dirIdx, dp)
+          else
+            if (state.animFrame[s] or 0) ~= 0 then
+              state.animFrame[s] = 0
+              switchDirEffect(p, s, itemId, dirIdx, dp)
+            end
+          end
         else
           state.animFrame[s] = 0
         end
       end
-      -- apply frame changes immediately for animated slots
-      for s, itemId in pairs(state.current) do
-        local dp = findDirectionalPNGs(s, itemId)
-        local frames = dp[dirIdx]
-        local count = (type(frames) == 'table') and #frames or 0
-        if count > 1 then
-          switchDirEffect(p, s, itemId, dirIdx, dp)
-        end
-      end
       if dirIdx ~= lastDirIdx then
-        for s, itemId in pairs(state.current) do
-          local dirPaths = findDirectionalPNGs(s, itemId)
-          if next(dirPaths) ~= nil then
-            switchDirEffect(p, s, itemId, dirIdx, dirPaths)
+        -- ensure ordering so head overlays body
+        local ordered = {
+          InventorySlotBody,
+          InventorySlotLeg,
+          InventorySlotFeet,
+          InventorySlotRight,
+          InventorySlotLeft,
+          InventorySlotNeck,
+          InventorySlotBack,
+          InventorySlotFinger,
+          InventorySlotAmmo,
+          InventorySlotPurse,
+          InventorySlotHead,
+        }
+        for _, s in ipairs(ordered) do
+          local itemId = state.current[s]
+          if itemId then
+            local dirPaths = findDirectionalPNGs(s, itemId)
+            if next(dirPaths) ~= nil then
+              switchDirEffect(p, s, itemId, dirIdx, dirPaths)
+            end
           end
         end
         lastDirIdx = dirIdx
