@@ -82,7 +82,9 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
   end
   local active = state.activeEffect[slot]
   if active and active ~= wantedEffId then
-    player:detachEffectById(active)
+    if player:getAttachedEffectById(active) then
+      player:detachEffectById(active)
+    end
     state.activeEffect[slot] = nil
   end
   if not player:getAttachedEffectById(wantedEffId) then
@@ -102,7 +104,10 @@ local function updateSlotOverlay(player, slot, item)
   end
   if not item then
     if state.activeEffect[slot] then
-      player:detachEffectById(state.activeEffect[slot])
+      local effId = state.activeEffect[slot]
+      if player:getAttachedEffectById(effId) then
+        player:detachEffectById(effId)
+      end
       state.activeEffect[slot] = nil
     end
     state.current[slot] = nil
