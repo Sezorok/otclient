@@ -177,6 +177,7 @@ end
 
 local controller = Controller:new()
 local lastDirIdx = nil
+local wasInvisible = false
 local cycleName = "paperdoll_dir"
 local invisByCreature = {}
 
@@ -237,6 +238,24 @@ function controller:onGameStart()
     end
     self:cycleEvent(function()
       if not g_game.isOnline() then return end
+      -- Invisibility guard: detach overlays while invisible
+      local invNow = isInvisible(p:getOutfit and p:getOutfit() or nil)
+      if invNow then
+        if not wasInvisible then
+          detachAllOverlays(p)
+          wasInvisible = true
+        end
+        return
+      elseif wasInvisible then
+        -- became visible again: restore overlays from inventory
+        for s = InventorySlotFirst, InventorySlotLast do
+          if SLOT_DIR[s] then
+            updateSlotOverlay(p, s, p:getInventoryItem(s))
+          end
+        end
+        wasInvisible = false
+      end
+
       local dir = p.getDirection and p:getDirection() or South
       local dirIdx = DIR_INDEX[dir] or 2
       if dirIdx ~= lastDirIdx then
