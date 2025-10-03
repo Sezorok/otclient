@@ -137,7 +137,9 @@ local function detachAllOverlays(player)
   state.activeEffect = {}
 end
 
-function init() end
+function init()
+  controller:init()
+end
 
 function controller:onGameStart()
   self:registerEvents(LocalPlayer, {
@@ -208,4 +210,6 @@ function controller:onGameEnd()
   state.current = {}
 end
 
-function terminate() end
+function terminate()
+  controller:terminate()
+end
