@@ -239,7 +239,11 @@ function controller:onGameStart()
     self:cycleEvent(function()
       if not g_game.isOnline() then return end
       -- Invisibility guard: detach overlays while invisible
-      local invNow = isInvisible(p.getOutfit and p:getOutfit() or nil)
+      local currentOutfit = nil
+      if p and p.getOutfit then
+        currentOutfit = p:getOutfit()
+      end
+      local invNow = isInvisible(currentOutfit)
       if invNow then
         if not wasInvisible then
           detachAllOverlays(p)
