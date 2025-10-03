@@ -40,10 +40,10 @@ local DEFAULT_DIR_OFFSETS = {
 -- helper console functions exposed below.
 local SLOT_OFFSETS = {
   [InventorySlotHead] = {
-    [North] = { 30, 35, true },
+    [North] = { 32, 35, true },
     [East]  = { 32, 35, true },
     [South] = { 33, 32, true },
-    [West]  = { 30, 35, true },
+    [West]  = { 35, 33, true },
   },
 }
 
