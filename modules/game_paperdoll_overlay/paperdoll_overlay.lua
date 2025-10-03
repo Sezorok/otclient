@@ -29,15 +29,43 @@ local SLOT_BASE = {
 local DIR_INDEX = { [North] = 0, [East] = 1, [South] = 2, [West] = 3 }
 local INDEX_TO_DIR = { North, East, South, West }
 
-local function applyDefaultOffsets(eff)
-  eff:setDirOffset(North, 0, -6, true)
-  eff:setDirOffset(East,  6, -4, true)
-  eff:setDirOffset(South, 0,  8, true)
-  eff:setDirOffset(West, -6, -4, true)
+local DEFAULT_DIR_OFFSETS = {
+  [North] = { 0, -6, true },
+  [East]  = { 6, -4, true },
+  [South] = { 0,  8, true },
+  [West]  = { -6, -4, true },
+}
+
+-- Per-slot directional offsets. Defaults can be tuned at runtime via
+-- helper console functions exposed below.
+local SLOT_OFFSETS = {
+  [InventorySlotHead] = {
+    [North] = { 0, -6, true },
+    [East]  = { 6, -4, true },
+    [South] = { 0,  8, true },
+    [West]  = { -6, -4, true },
+  },
+}
+
+local function getDirOffsetsForSlot(slot)
+  return SLOT_OFFSETS[slot] or DEFAULT_DIR_OFFSETS
+end
+
+local function applySlotOffsets(slot, eff)
+  local dirOffsets = getDirOffsetsForSlot(slot)
+  local n = dirOffsets[North] or DEFAULT_DIR_OFFSETS[North]
+  local e = dirOffsets[East]  or DEFAULT_DIR_OFFSETS[East]
+  local s = dirOffsets[South] or DEFAULT_DIR_OFFSETS[South]
+  local w = dirOffsets[West]  or DEFAULT_DIR_OFFSETS[West]
+  eff:setDirOffset(North, n[1], n[2], n[3] ~= false)
+  eff:setDirOffset(East,  e[1], e[2], e[3] ~= false)
+  eff:setDirOffset(South, s[1], s[2], s[3] ~= false)
+  eff:setDirOffset(West,  w[1], w[2], w[3] ~= false)
 end
 
 local state = { current = {}, activeEffect = {} }
 local registeredIds = {}
+local registeredMeta = {} -- effId -> { slot=..., itemId=..., dirIdx=... }
 
 local function makeEffectId(slot, itemId, dirIdx)
   return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0)
@@ -70,26 +98,20 @@ local function ensureEffects(slot, itemId, dirPaths)
       if not already then
         local registeredViaManager = false
         if AttachedEffectManager and AttachedEffectManager.register and ThingExternalTexture then
-          local cfg = {
-            onTop = true,
-            dirOffset = {
-              [North] = { 0, -6, true },
-              [East]  = { 6, -4, true },
-              [South] = { 0,  8, true },
-              [West]  = { -6, -4, true },
-            }
-          }
+          local dirOff = getDirOffsetsForSlot(slot)
+          local cfg = { onTop = true, dirOffset = dirOff }
           AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, cfg)
           registeredViaManager = true
         else
           g_attachedEffects.registerByImage(effId, "paperdll", path, true)
         end
         registeredIds[effId] = true
+        registeredMeta[effId] = { slot = slot, itemId = itemId, dirIdx = i }
         if not registeredViaManager then
           local eff = g_attachedEffects.getById(effId)
           if eff then
             eff:setOnTop(true)
-            applyDefaultOffsets(eff)
+            applySlotOffsets(slot, eff)
           end
         end
       end
@@ -245,4 +267,49 @@ end
 
 function terminate()
   controller:terminate()
+end
+
+-- Console helpers for offset tuning (head slot)
+function paperdoll_print_head_offsets()
+  local o = getDirOffsetsForSlot(InventorySlotHead)
+  local n, e, s, w = o[North], o[East], o[South], o[West]
+  print(string.format(
+    "Head offsets: N=(%d,%d) E=(%d,%d) S=(%d,%d) W=(%d,%d)",
+    n[1], n[2], e[1], e[2], s[1], s[2], w[1], w[2]
+  ))
+end
+
+local function apply_offsets_to_all_for_slot(slot)
+  for effId, meta in pairs(registeredMeta) do
+    if meta.slot == slot then
+      local eff = g_attachedEffects.getById(effId)
+      if eff then
+        applySlotOffsets(slot, eff)
+      end
+    end
+  end
+end
+
+function paperdoll_set_head_offsets(nx, ny, ex, ey, sx, sy, wx, wy)
+  SLOT_OFFSETS[InventorySlotHead] = {
+    [North] = { tonumber(nx) or 0, tonumber(ny) or 0, true },
+    [East]  = { tonumber(ex) or 0, tonumber(ey) or 0, true },
+    [South] = { tonumber(sx) or 0, tonumber(sy) or 0, true },
+    [West]  = { tonumber(wx) or 0, tonumber(wy) or 0, true },
+  }
+  apply_offsets_to_all_for_slot(InventorySlotHead)
+  paperdoll_print_head_offsets()
+end
+
+function paperdoll_nudge_head(dir, dx, dy)
+  local map = { n = North, e = East, s = South, w = West }
+  local d = map[string.lower(dir or '')]
+  if not d then print('use: paperdoll_nudge_head(n|e|s|w, dx, dy)') return end
+  local o = getDirOffsetsForSlot(InventorySlotHead)
+  local v = o[d] or {0,0,true}
+  v[1] = v[1] + (tonumber(dx) or 0)
+  v[2] = v[2] + (tonumber(dy) or 0)
+  o[d] = v
+  apply_offsets_to_all_for_slot(InventorySlotHead)
+  paperdoll_print_head_offsets()
 end
