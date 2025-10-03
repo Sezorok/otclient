@@ -73,51 +73,68 @@ end
 
 -- moved above
 
-local function makeEffectId(slot, itemId, dirIdx)
+local function makeEffectId(slot, itemId, dirIdx, frameIdx)
+  if frameIdx ~= nil then
+    -- Reserve space to include per-frame ids without colliding with single-frame ids
+    return SLOT_BASE[slot] + ((itemId % 10000) * 20) + (dirIdx or 0) * 5 + frameIdx
+  end
   return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0)
 end
 
 local function findDirectionalPNGs(slot, itemId)
+  -- Returns a map of dirIdx -> array of frame paths.
+  -- Supports both single-frame naming:  <id>_<dir>.png
+  -- and multi-frame naming:            <id>_<dir>_<frame>.png (frame = 0..N)
   local dirName = SLOT_DIR[slot]
   if not dirName then return {} end
   local base = string.format("/images/paperdll/%s/%d_", dirName, itemId)
   local map = {}
   for i = 0, 3 do
-    local path = base .. i .. ".png"
-    if g_resources.fileExists(path) then map[i] = path end
+    local frames = {}
+    local single = base .. i .. ".png"
+    if g_resources.fileExists(single) then table.insert(frames, single) end
+    -- probe up to 10 frames per direction (0..9)
+    for f = 0, 9 do
+      local pth = base .. i .. "_" .. f .. ".png"
+      if g_resources.fileExists(pth) then table.insert(frames, pth) end
+    end
+    if #frames > 0 then map[i] = frames end
   end
   return map
 end
 
 local function ensureEffects(slot, itemId, dirPaths)
   for i = 0, 3 do
-    local path = dirPaths[i]
-    if path then
-      local effId = makeEffectId(slot, itemId, i)
-      local already = registeredIds[effId]
-      if not already then
-        if AttachedEffectManager and AttachedEffectManager.get and AttachedEffectManager.get(effId) then
+    local paths = dirPaths[i]
+    if type(paths) == 'table' then
+      for fIdx, path in ipairs(paths) do
+        local frame = fIdx - 1
+        local effId = makeEffectId(slot, itemId, i, frame)
+        local already = registeredIds[effId]
+        if not already then
+          if AttachedEffectManager and AttachedEffectManager.get and AttachedEffectManager.get(effId) then
+            registeredIds[effId] = true
+            already = true
+          end
+        end
+        if not already then
+          local registeredViaManager = false
+          if AttachedEffectManager and AttachedEffectManager.register and ThingExternalTexture then
+            local dir = INDEX_TO_DIR[i]
+            local dirOff = getDirOffsetsForSlot(slot)
+            local o = dirOff[dir] or DEFAULT_DIR_OFFSETS[South]
+            local cfg = { onTop = true, offset = { o[1] or 0, o[2] or 0, true } }
+            AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, cfg)
+            registeredViaManager = true
+          else
+            g_attachedEffects.registerByImage(effId, "paperdll", path, true)
+          end
           registeredIds[effId] = true
-          already = true
-        end
-      end
-      if not already then
-        local registeredViaManager = false
-        if AttachedEffectManager and AttachedEffectManager.register and ThingExternalTexture then
-          local dir = INDEX_TO_DIR[i]
-          local dirOff = getDirOffsetsForSlot(slot)
-          local o = dirOff[dir] or DEFAULT_DIR_OFFSETS[South]
-          local cfg = { onTop = true, offset = { o[1] or 0, o[2] or 0, true } }
-          AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, cfg)
-          registeredViaManager = true
-        else
-          g_attachedEffects.registerByImage(effId, "paperdll", path, true)
-        end
-        registeredIds[effId] = true
-        registeredMeta[effId] = { slot = slot, itemId = itemId, dirIdx = i }
-        if not registeredViaManager then
-          local eff = g_attachedEffects.getById(effId)
-          if eff then applySlotOffsets(slot, eff, i) end
+          registeredMeta[effId] = { slot = slot, itemId = itemId, dirIdx = i, frameIdx = frame }
+          if not registeredViaManager then
+            local eff = g_attachedEffects.getById(effId)
+            if eff then applySlotOffsets(slot, eff, i) end
+          end
         end
       end
     end
@@ -125,12 +142,33 @@ local function ensureEffects(slot, itemId, dirPaths)
 end
 
 local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
-  local wantedEffId = makeEffectId(slot, itemId, dirIdx)
-  if not dirPaths[dirIdx] then
+  local frames = dirPaths[dirIdx]
+  local frameIdx = state.animFrame and state.animFrame[slot] or 0
+  local wantedEffId = nil
+  if type(frames) ~= 'table' or #frames == 0 then
+    wantedEffId = makeEffectId(slot, itemId, dirIdx)
+  else
+    local count = #frames
+    frameIdx = frameIdx % count
+    wantedEffId = makeEffectId(slot, itemId, dirIdx, frameIdx)
+  end
+  if not frames then
     if dirPaths[2] then
-      wantedEffId = makeEffectId(slot, itemId, 2)
+      frames = dirPaths[2]
+      if type(frames) == 'table' and #frames > 0 then
+        wantedEffId = makeEffectId(slot, itemId, 2, 0)
+      else
+        wantedEffId = makeEffectId(slot, itemId, 2)
+      end
     else
-      for i = 0, 3 do if dirPaths[i] then wantedEffId = makeEffectId(slot, itemId, i); break end end
+      for i = 0, 3 do if dirPaths[i] then
+        if type(dirPaths[i]) == 'table' and #dirPaths[i] > 0 then
+          wantedEffId = makeEffectId(slot, itemId, i, 0)
+        else
+          wantedEffId = makeEffectId(slot, itemId, i)
+        end
+        break
+      end end
     end
   end
   local active = state.activeEffect[slot]
@@ -277,6 +315,19 @@ function controller:onGameStart()
 
       local dir = p.getDirection and p:getDirection() or South
       local dirIdx = DIR_INDEX[dir] or 2
+      -- advance frame for animated slots (e.g., body)
+      state.animFrame = state.animFrame or {}
+      for s, itemId in pairs(state.current) do
+        local dp = findDirectionalPNGs(s, itemId)
+        local frames = dp[dirIdx]
+        local count = (type(frames) == 'table') and #frames or 0
+        if count > 1 then
+          local nextIdx = ((state.animFrame[s] or 0) + 1) % count
+          state.animFrame[s] = nextIdx
+        else
+          state.animFrame[s] = 0
+        end
+      end
       if dirIdx ~= lastDirIdx then
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
