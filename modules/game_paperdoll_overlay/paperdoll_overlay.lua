@@ -213,7 +213,7 @@ function controller:onGameStart()
       -- LocalPlayer-only overlay management; other creatures handled by server effects
       local lp = g_game.getLocalPlayer()
       if not lp or creature ~= lp then return end
-      local inv = isInvisible(outfit)
+      local inv = lp.isInvisible and lp:isInvisible() or false
       local cid = creature:getId()
       if inv and not invisByCreature[cid] then
         detachAllOverlays(creature)
@@ -239,11 +239,7 @@ function controller:onGameStart()
     self:cycleEvent(function()
       if not g_game.isOnline() then return end
       -- Invisibility guard: detach overlays while invisible
-      local currentOutfit = nil
-      if p and p.getOutfit then
-        currentOutfit = p:getOutfit()
-      end
-      local invNow = isInvisible(currentOutfit)
+      local invNow = p.isInvisible and p:isInvisible() or false
       if invNow then
         if not wasInvisible then
           detachAllOverlays(p)
