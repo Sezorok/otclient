@@ -293,14 +293,16 @@ local function apply_offsets_to_all_for_slot(slot)
   -- Safer: only reapply on currently attached effects for the local player
   local p = g_game.getLocalPlayer()
   if not p then return end
-  for s, effId in pairs(state.activeEffect) do
-    if s == slot and effId then
-      local eff = p:getAttachedEffectById(effId)
-      if eff then
-        applySlotOffsets(slot, eff)
-      end
-    end
+  local effId = state.activeEffect[slot]
+  if not effId then return end
+  local eff = g_attachedEffects.getById(effId)
+  if not eff then return end
+  -- apply latest offsets to registry effect and reattach to force refresh
+  applySlotOffsets(slot, eff)
+  if p:getAttachedEffectById(effId) then
+    p:detachEffectById(effId)
   end
+  p:attachEffect(eff)
 end
 
 function paperdoll_set_head_offsets(nx, ny, ex, ey, sx, sy, wx, wy)
