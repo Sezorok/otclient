@@ -288,9 +288,12 @@ function paperdoll_print_head_offsets()
 end
 
 local function apply_offsets_to_all_for_slot(slot)
-  for effId, meta in pairs(registeredMeta) do
-    if meta.slot == slot then
-      local eff = g_attachedEffects.getById(effId)
+  -- Safer: only reapply on currently attached effects for the local player
+  local p = g_game.getLocalPlayer()
+  if not p then return end
+  for s, effId in pairs(state.activeEffect) do
+    if s == slot and effId then
+      local eff = p:getAttachedEffectById(effId)
       if eff then
         applySlotOffsets(slot, eff)
       end
