@@ -52,15 +52,21 @@ local function getDirOffsetsForSlot(slot)
 end
 
 local function applySlotOffsets(slot, eff)
+  if not eff then return end
+  local effId = eff.getId and eff:getId() or nil
+  local meta = effId and registeredMeta[effId] or nil
+  local dir = meta and INDEX_TO_DIR[meta.dirIdx] or nil
   local dirOffsets = getDirOffsetsForSlot(slot)
-  local n = dirOffsets[North] or DEFAULT_DIR_OFFSETS[North]
-  local e = dirOffsets[East]  or DEFAULT_DIR_OFFSETS[East]
-  local s = dirOffsets[South] or DEFAULT_DIR_OFFSETS[South]
-  local w = dirOffsets[West]  or DEFAULT_DIR_OFFSETS[West]
-  eff:setDirOffset(North, n[1], n[2], n[3] ~= false)
-  eff:setDirOffset(East,  e[1], e[2], e[3] ~= false)
-  eff:setDirOffset(South, s[1], s[2], s[3] ~= false)
-  eff:setDirOffset(West,  w[1], w[2], w[3] ~= false)
+  local o
+  if dir then
+    o = dirOffsets[dir]
+  end
+  if not o then
+    -- fallback to South if unknown
+    o = dirOffsets[South] or DEFAULT_DIR_OFFSETS[South]
+  end
+  eff:setOnTop(true)
+  eff:setOffset(o[1] or 0, o[2] or 0)
 end
 
 local state = { current = {}, activeEffect = {} }
@@ -98,8 +104,10 @@ local function ensureEffects(slot, itemId, dirPaths)
       if not already then
         local registeredViaManager = false
         if AttachedEffectManager and AttachedEffectManager.register and ThingExternalTexture then
+          local dir = INDEX_TO_DIR[i]
           local dirOff = getDirOffsetsForSlot(slot)
-          local cfg = { onTop = true, dirOffset = dirOff }
+          local o = dirOff[dir] or DEFAULT_DIR_OFFSETS[South]
+          local cfg = { onTop = true, offset = { o[1] or 0, o[2] or 0, true } }
           AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, cfg)
           registeredViaManager = true
         else
@@ -109,10 +117,7 @@ local function ensureEffects(slot, itemId, dirPaths)
         registeredMeta[effId] = { slot = slot, itemId = itemId, dirIdx = i }
         if not registeredViaManager then
           local eff = g_attachedEffects.getById(effId)
-          if eff then
-            eff:setOnTop(true)
-            applySlotOffsets(slot, eff)
-          end
+          if eff then applySlotOffsets(slot, eff) end
         end
       end
     end
@@ -295,14 +300,16 @@ local function apply_offsets_to_all_for_slot(slot)
   if not p then return end
   local effId = state.activeEffect[slot]
   if not effId then return end
-  local eff = g_attachedEffects.getById(effId)
-  if not eff then return end
-  -- apply latest offsets to registry effect and reattach to force refresh
-  applySlotOffsets(slot, eff)
-  if p:getAttachedEffectById(effId) then
-    p:detachEffectById(effId)
+  local inst = p:getAttachedEffectById(effId)
+  if inst then
+    applySlotOffsets(slot, inst)
+    return
   end
-  p:attachEffect(eff)
+  -- If not attached yet, update the registered effect and attach
+  local proto = g_attachedEffects.getById(effId)
+  if not proto then return end
+  applySlotOffsets(slot, proto)
+  p:attachEffect(proto)
 end
 
 function paperdoll_set_head_offsets(nx, ny, ex, ey, sx, sy, wx, wy)
