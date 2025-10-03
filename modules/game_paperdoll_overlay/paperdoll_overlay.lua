@@ -27,7 +27,7 @@ local SLOT_BASE = {
 }
 
 local DIR_INDEX = { [North] = 0, [East] = 1, [South] = 2, [West] = 3 }
-local INDEX_TO_DIR = { North, East, South, West }
+local INDEX_TO_DIR = { [0] = North, [1] = East, [2] = South, [3] = West }
 
 local DEFAULT_DIR_OFFSETS = {
   [North] = { 0, -6, true },
