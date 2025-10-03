@@ -195,6 +195,10 @@ end
 
 function init()
   controller:init()
+  -- expose console helpers in global scope for easy tuning
+  _G.paperdoll_print_head_offsets = paperdoll_print_head_offsets
+  _G.paperdoll_set_head_offsets   = paperdoll_set_head_offsets
+  _G.paperdoll_nudge_head         = paperdoll_nudge_head
 end
 
 function controller:onGameStart()
@@ -266,6 +270,10 @@ function controller:onGameEnd()
 end
 
 function terminate()
+  -- cleanup exported helpers
+  _G.paperdoll_print_head_offsets = nil
+  _G.paperdoll_set_head_offsets   = nil
+  _G.paperdoll_nudge_head         = nil
   controller:terminate()
 end
 
