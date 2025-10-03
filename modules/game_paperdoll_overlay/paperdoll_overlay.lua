@@ -41,8 +41,8 @@ local DEFAULT_DIR_OFFSETS = {
 local SLOT_OFFSETS = {
   [InventorySlotHead] = {
     [North] = { 30, 35, true },
-    [East]  = { 30, 35, true },
-    [South] = { 30, 35, true },
+    [East]  = { 32, 35, true },
+    [South] = { 33, 32, true },
     [West]  = { 30, 35, true },
   },
 }
