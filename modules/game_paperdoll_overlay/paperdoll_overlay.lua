@@ -46,10 +46,10 @@ local SLOT_OFFSETS = {
     [West]  = { 35, 33, true },
   },
   [InventorySlotBody] = {
-    [North] = { 32, 35, true },
-    [East]  = { 32, 35, true },
-    [South] = { 32, 35, true },
-    [West]  = { 32, 35, true },
+    [North] = { 32, 32, true },
+    [East]  = { 33, 33, true },
+    [South] = { 32, 32, true },
+    [West]  = { 33, 33, true },
   },
 }
 
