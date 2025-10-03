@@ -60,11 +60,28 @@ local function ensureEffects(slot, itemId, dirPaths)
     if path then
       local effId = makeEffectId(slot, itemId, i)
       if not g_attachedEffects.getById(effId) then
-        g_attachedEffects.registerByImage(effId, "paperdll", path, true)
-        local eff = g_attachedEffects.getById(effId)
-        if eff then
-          eff:setOnTop(true)
-          applyDefaultOffsets(eff)
+        local registeredViaManager = false
+        if AttachedEffectManager and AttachedEffectManager.register and ThingExternalTexture then
+          local cfg = {
+            onTop = true,
+            dirOffset = {
+              [North] = { 0, -6, true },
+              [East]  = { 6, -4, true },
+              [South] = { 0,  8, true },
+              [West]  = { -6, -4, true },
+            }
+          }
+          AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, cfg)
+          registeredViaManager = true
+        else
+          g_attachedEffects.registerByImage(effId, "paperdll", path, true)
+        end
+        if not registeredViaManager then
+          local eff = g_attachedEffects.getById(effId)
+          if eff then
+            eff:setOnTop(true)
+            applyDefaultOffsets(eff)
+          end
         end
       end
     end
