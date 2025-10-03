@@ -137,6 +137,29 @@ local function ensureEffects(slot, itemId, dirPaths)
           end
         end
       end
+      -- Backward-compat: if only a single frame is present, also register the non-framed ID
+      if #paths == 1 then
+        local singleId = makeEffectId(slot, itemId, i)
+        if not registeredIds[singleId] then
+          local registeredViaManager = false
+          if AttachedEffectManager and AttachedEffectManager.register and ThingExternalTexture then
+            local dir = INDEX_TO_DIR[i]
+            local dirOff = getDirOffsetsForSlot(slot)
+            local o = dirOff[dir] or DEFAULT_DIR_OFFSETS[South]
+            local cfg = { onTop = true, offset = { o[1] or 0, o[2] or 0, true } }
+            AttachedEffectManager.register(singleId, "paperdll", paths[1], ThingExternalTexture, cfg)
+            registeredViaManager = true
+          else
+            g_attachedEffects.registerByImage(singleId, "paperdll", paths[1], true)
+          end
+          registeredIds[singleId] = true
+          registeredMeta[singleId] = { slot = slot, itemId = itemId, dirIdx = i, frameIdx = 0 }
+          if not registeredViaManager then
+            local eff = g_attachedEffects.getById(singleId)
+            if eff then applySlotOffsets(slot, eff, i) end
+          end
+        end
+      end
     end
   end
 end
@@ -180,6 +203,14 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
   end
   if not player:getAttachedEffectById(wantedEffId) then
     local eff = g_attachedEffects.getById(wantedEffId)
+    if not eff then
+      -- Fallback for legacy single-frame id
+      local fallbackId = makeEffectId(slot, itemId, dirIdx)
+      if registeredIds[fallbackId] then
+        eff = g_attachedEffects.getById(fallbackId)
+        wantedEffId = fallbackId
+      end
+    end
     if eff then
       -- reapply latest tuned offsets for this slot before attaching
       applySlotOffsets(slot, eff, dirIdx)
