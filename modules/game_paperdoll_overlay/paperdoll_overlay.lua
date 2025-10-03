@@ -288,6 +288,9 @@ function init()
   _G.paperdoll_print_head_offsets = paperdoll_print_head_offsets
   _G.paperdoll_set_head_offsets   = paperdoll_set_head_offsets
   _G.paperdoll_nudge_head         = paperdoll_nudge_head
+  _G.paperdoll_print_body_offsets = paperdoll_print_body_offsets
+  _G.paperdoll_set_body_offsets   = paperdoll_set_body_offsets
+  _G.paperdoll_nudge_body         = paperdoll_nudge_body
 end
 
 function controller:onGameStart()
@@ -404,6 +407,9 @@ function terminate()
   _G.paperdoll_print_head_offsets = nil
   _G.paperdoll_set_head_offsets   = nil
   _G.paperdoll_nudge_head         = nil
+  _G.paperdoll_print_body_offsets = nil
+  _G.paperdoll_set_body_offsets   = nil
+  _G.paperdoll_nudge_body         = nil
   controller:terminate()
 end
 
@@ -463,4 +469,38 @@ function paperdoll_nudge_head(dir, dx, dy)
   o[d] = v
   apply_offsets_to_all_for_slot(InventorySlotHead)
   paperdoll_print_head_offsets()
+end
+
+-- Console helpers for offset tuning (body slot)
+function paperdoll_print_body_offsets()
+  local o = getDirOffsetsForSlot(InventorySlotBody)
+  local n, e, s, w = o[North], o[East], o[South], o[West]
+  print(string.format(
+    "Body offsets: N=(%d,%d) E=(%d,%d) S=(%d,%d) W=(%d,%d)",
+    n[1], n[2], e[1], e[2], s[1], s[2], w[1], w[2]
+  ))
+end
+
+function paperdoll_set_body_offsets(nx, ny, ex, ey, sx, sy, wx, wy)
+  SLOT_OFFSETS[InventorySlotBody] = {
+    [North] = { tonumber(nx) or 0, tonumber(ny) or 0, true },
+    [East]  = { tonumber(ex) or 0, tonumber(ey) or 0, true },
+    [South] = { tonumber(sx) or 0, tonumber(sy) or 0, true },
+    [West]  = { tonumber(wx) or 0, tonumber(wy) or 0, true },
+  }
+  apply_offsets_to_all_for_slot(InventorySlotBody)
+  paperdoll_print_body_offsets()
+end
+
+function paperdoll_nudge_body(dir, dx, dy)
+  local map = { n = North, e = East, s = South, w = West }
+  local d = map[string.lower(dir or '')]
+  if not d then print('use: paperdoll_nudge_body(n|e|s|w, dx, dy)') return end
+  local o = getDirOffsetsForSlot(InventorySlotBody)
+  local v = o[d] or {0,0,true}
+  v[1] = v[1] + (tonumber(dx) or 0)
+  v[2] = v[2] + (tonumber(dy) or 0)
+  o[d] = v
+  apply_offsets_to_all_for_slot(InventorySlotBody)
+  paperdoll_print_body_offsets()
 end
