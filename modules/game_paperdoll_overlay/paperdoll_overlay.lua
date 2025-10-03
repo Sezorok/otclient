@@ -97,6 +97,9 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
 end
 
 local function updateSlotOverlay(player, slot, item)
+  if not slot or not SLOT_DIR[slot] then
+    return
+  end
   if not item then
     if state.activeEffect[slot] then
       player:detachEffectById(state.activeEffect[slot])
@@ -170,7 +173,9 @@ function controller:onGameStart()
   local p = g_game.getLocalPlayer()
   if p then
     for s = InventorySlotFirst, InventorySlotLast do
-      updateSlotOverlay(p, s, p:getInventoryItem(s))
+      if SLOT_DIR[s] then
+        updateSlotOverlay(p, s, p:getInventoryItem(s))
+      end
     end
     self:cycleEvent(function()
       if not g_game.isOnline() then return end
@@ -187,12 +192,13 @@ function controller:onGameStart()
       end
       -- Inventory sync: ensure overlays attach/detach even if onInventoryChange isn't fired
       for s = InventorySlotFirst, InventorySlotLast do
-        local it = p:getInventoryItem(s)
-        local curr = state.current[s]
-        local currId = curr
-        local itId = it and it:getId() or nil
-        if itId ~= currId then
-          updateSlotOverlay(p, s, it)
+        if SLOT_DIR[s] then
+          local it = p:getInventoryItem(s)
+          local currId = state.current[s]
+          local itId = it and it:getId() or nil
+          if itId ~= currId then
+            updateSlotOverlay(p, s, it)
+          end
         end
       end
     end, 200, cycleName)
