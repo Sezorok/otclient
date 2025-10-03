@@ -37,6 +37,7 @@ local function applyDefaultOffsets(eff)
 end
 
 local state = { current = {}, activeEffect = {} }
+local registeredIds = {}
 
 local function makeEffectId(slot, itemId, dirIdx)
   return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0)
@@ -59,7 +60,14 @@ local function ensureEffects(slot, itemId, dirPaths)
     local path = dirPaths[i]
     if path then
       local effId = makeEffectId(slot, itemId, i)
-      if not g_attachedEffects.getById(effId) then
+      local already = registeredIds[effId]
+      if not already then
+        if AttachedEffectManager and AttachedEffectManager.get and AttachedEffectManager.get(effId) then
+          registeredIds[effId] = true
+          already = true
+        end
+      end
+      if not already then
         local registeredViaManager = false
         if AttachedEffectManager and AttachedEffectManager.register and ThingExternalTexture then
           local cfg = {
@@ -76,6 +84,7 @@ local function ensureEffects(slot, itemId, dirPaths)
         else
           g_attachedEffects.registerByImage(effId, "paperdll", path, true)
         end
+        registeredIds[effId] = true
         if not registeredViaManager then
           local eff = g_attachedEffects.getById(effId)
           if eff then
