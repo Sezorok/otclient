@@ -328,6 +328,15 @@ function controller:onGameStart()
           state.animFrame[s] = 0
         end
       end
+      -- apply frame changes immediately for animated slots
+      for s, itemId in pairs(state.current) do
+        local dp = findDirectionalPNGs(s, itemId)
+        local frames = dp[dirIdx]
+        local count = (type(frames) == 'table') and #frames or 0
+        if count > 1 then
+          switchDirEffect(p, s, itemId, dirIdx, dp)
+        end
+      end
       if dirIdx ~= lastDirIdx then
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
