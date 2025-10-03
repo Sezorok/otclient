@@ -45,6 +45,12 @@ local SLOT_OFFSETS = {
     [South] = { 33, 32, true },
     [West]  = { 35, 33, true },
   },
+  [InventorySlotBody] = {
+    [North] = { 32, 35, true },
+    [East]  = { 32, 35, true },
+    [South] = { 32, 35, true },
+    [West]  = { 32, 35, true },
+  },
 }
 
 local function getDirOffsetsForSlot(slot)
