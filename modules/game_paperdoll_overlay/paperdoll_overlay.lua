@@ -138,6 +138,8 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
   if not player:getAttachedEffectById(wantedEffId) then
     local eff = g_attachedEffects.getById(wantedEffId)
     if eff then
+      -- reapply latest tuned offsets for this slot before attaching
+      applySlotOffsets(slot, eff)
       player:attachEffect(eff)
       state.activeEffect[slot] = wantedEffId
     end
