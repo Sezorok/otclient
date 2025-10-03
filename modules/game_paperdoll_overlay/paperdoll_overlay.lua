@@ -237,12 +237,8 @@ function controller:onGameStart()
 end
 
 function controller:onGameEnd()
-  local p = g_game.getLocalPlayer()
-  if p then
-    for s, effId in pairs(state.activeEffect) do
-      if effId then p:detachEffectById(effId) end
-    end
-  end
+  -- Do not actively detach on unload/reload to avoid race with
+  -- other modules clearing the global attached effect registry.
   state.activeEffect = {}
   state.current = {}
 end
