@@ -3,6 +3,7 @@ Module
   description: Paperdoll overlay via images (paperdll)
   author: You
   sandboxed: true
+  autoload: true
   scripts: [ paperdoll_overlay ]
   @onLoad: init()
   @onUnload: terminate()
