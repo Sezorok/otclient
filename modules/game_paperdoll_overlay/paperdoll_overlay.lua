@@ -51,27 +51,21 @@ local function getDirOffsetsForSlot(slot)
   return SLOT_OFFSETS[slot] or DEFAULT_DIR_OFFSETS
 end
 
-local function applySlotOffsets(slot, eff)
+-- Track current and registered effects before using helpers
+local state = { current = {}, activeEffect = {} }
+local registeredIds = {}
+local registeredMeta = {} -- effId -> { slot=..., itemId=..., dirIdx=... }
+
+local function applySlotOffsets(slot, eff, dirIdx)
   if not eff then return end
-  local effId = eff.getId and eff:getId() or nil
-  local meta = effId and registeredMeta[effId] or nil
-  local dir = meta and INDEX_TO_DIR[meta.dirIdx] or nil
+  local dir = INDEX_TO_DIR[dirIdx or 2] or South
   local dirOffsets = getDirOffsetsForSlot(slot)
-  local o
-  if dir then
-    o = dirOffsets[dir]
-  end
-  if not o then
-    -- fallback to South if unknown
-    o = dirOffsets[South] or DEFAULT_DIR_OFFSETS[South]
-  end
+  local o = dirOffsets[dir] or DEFAULT_DIR_OFFSETS[South]
   eff:setOnTop(true)
   eff:setOffset(o[1] or 0, o[2] or 0)
 end
 
-local state = { current = {}, activeEffect = {} }
-local registeredIds = {}
-local registeredMeta = {} -- effId -> { slot=..., itemId=..., dirIdx=... }
+-- moved above
 
 local function makeEffectId(slot, itemId, dirIdx)
   return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0)
@@ -117,7 +111,7 @@ local function ensureEffects(slot, itemId, dirPaths)
         registeredMeta[effId] = { slot = slot, itemId = itemId, dirIdx = i }
         if not registeredViaManager then
           local eff = g_attachedEffects.getById(effId)
-          if eff then applySlotOffsets(slot, eff) end
+          if eff then applySlotOffsets(slot, eff, i) end
         end
       end
     end
@@ -144,7 +138,7 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
     local eff = g_attachedEffects.getById(wantedEffId)
     if eff then
       -- reapply latest tuned offsets for this slot before attaching
-      applySlotOffsets(slot, eff)
+      applySlotOffsets(slot, eff, dirIdx)
       player:attachEffect(eff)
       state.activeEffect[slot] = wantedEffId
     end
@@ -298,18 +292,24 @@ local function apply_offsets_to_all_for_slot(slot)
   -- Safer: only reapply on currently attached effects for the local player
   local p = g_game.getLocalPlayer()
   if not p then return end
-  local effId = state.activeEffect[slot]
-  if not effId then return end
-  local inst = p:getAttachedEffectById(effId)
-  if inst then
-    applySlotOffsets(slot, inst)
-    return
+  -- Update all registered prototypes for this slot
+  for effId, meta in pairs(registeredMeta) do
+    if meta.slot == slot then
+      local proto = g_attachedEffects.getById(effId)
+      if proto then
+        applySlotOffsets(slot, proto, meta.dirIdx)
+      end
+    end
   end
-  -- If not attached yet, update the registered effect and attach
-  local proto = g_attachedEffects.getById(effId)
-  if not proto then return end
-  applySlotOffsets(slot, proto)
-  p:attachEffect(proto)
+  -- Update current attached instance for immediate visual feedback
+  local activeId = state.activeEffect[slot]
+  if activeId then
+    local inst = p:getAttachedEffectById(activeId)
+    if inst then
+      local dirIdx = DIR_INDEX[p.getDirection and p:getDirection() or South] or 2
+      applySlotOffsets(slot, inst, dirIdx)
+    end
+  end
 end
 
 function paperdoll_set_head_offsets(nx, ny, ex, ey, sx, sy, wx, wy)
