@@ -3,6 +3,15 @@ local iconTopMenu = nil
 paperdollController = Controller:new()
 paperdollController:setUI('paperdoll', modules.game_interface.getMainRightPanel())
 
+-- Module lifecycle wrappers to match .otmod hooks
+function init()
+  paperdollController:init()
+end
+
+function terminate()
+  paperdollController:terminate()
+end
+
 local UI = nil
 
 local SLOT_MAP = {
