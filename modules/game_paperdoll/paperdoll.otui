@@ -25,6 +25,8 @@ PaperDollWindow < UIWidget
     margin-top: 6
     creature-center: true
     creature-size: 64
+    draggable: false
+    phantom: true
 
   UIWidget
     id: grid
