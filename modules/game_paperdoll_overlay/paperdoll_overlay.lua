@@ -360,15 +360,40 @@ function controller:onGameStart()
           if walking then
             local nextIdx = ((state.animFrame[s] or 0) + 1) % count
             state.animFrame[s] = nextIdx
-            switchDirEffect(p, s, itemId, dirIdx, dp)
           else
             if (state.animFrame[s] or 0) ~= 0 then
               state.animFrame[s] = 0
-              switchDirEffect(p, s, itemId, dirIdx, dp)
             end
           end
         else
           state.animFrame[s] = 0
+        end
+      end
+      -- apply frame changes in deterministic order so head attaches last
+      do
+        local ordered = {
+          InventorySlotBody,
+          InventorySlotLeg,
+          InventorySlotFeet,
+          InventorySlotRight,
+          InventorySlotLeft,
+          InventorySlotNeck,
+          InventorySlotBack,
+          InventorySlotFinger,
+          InventorySlotAmmo,
+          InventorySlotPurse,
+          InventorySlotHead,
+        }
+        for _, s in ipairs(ordered) do
+          local itemId = state.current[s]
+          if itemId then
+            local dp = findDirectionalPNGs(s, itemId)
+            local frames = dp[dirIdx]
+            local count = (type(frames) == 'table') and #frames or 0
+            if count > 1 then
+              switchDirEffect(p, s, itemId, dirIdx, dp)
+            end
+          end
         end
       end
       if dirIdx ~= lastDirIdx then
