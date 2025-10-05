@@ -172,6 +172,8 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRest
   if forceRestart or not player.getAttachedEffectById or not player:getAttachedEffectById(wantedEffId) then
     local eff = g_attachedEffects.getById(wantedEffId)
     if eff then
+      -- Apply latest offsets at attach time so runtime changes take effect
+      applyOffsetsForAllDirs(eff, slot, itemId)
       player:attachEffect(eff)
       state.activeEffect[slot] = wantedEffId
     end
@@ -341,6 +343,19 @@ end
 function paperdoll_nudge_body(dirKey, dx, dy)
   local v = nudgeSlotDefault('body', dirKey, dx, dy)
   saveOffsets()
+  -- force refresh current attachments to reflect live changes
+  local p = g_game.getLocalPlayer()
+  if p then
+    local dir = p.getDirection and p:getDirection() or South
+    local dirIdx = DIR_INDEX[dir] or 2
+    local item = p:getInventoryItem(InventorySlotBody)
+    if item then
+      local paths = findDirectionalPNGs(InventorySlotBody, item:getId())
+      if next(paths) ~= nil then
+        switchDirEffect(p, InventorySlotBody, item:getId(), dirIdx, paths, true)
+      end
+    end
+  end
   return v
 end
 
@@ -351,6 +366,18 @@ end
 function paperdoll_nudge_head(dirKey, dx, dy)
   local v = nudgeSlotDefault('head', dirKey, dx, dy)
   saveOffsets()
+  local p = g_game.getLocalPlayer()
+  if p then
+    local dir = p.getDirection and p:getDirection() or South
+    local dirIdx = DIR_INDEX[dir] or 2
+    local item = p:getInventoryItem(InventorySlotHead)
+    if item then
+      local paths = findDirectionalPNGs(InventorySlotHead, item:getId())
+      if next(paths) ~= nil then
+        switchDirEffect(p, InventorySlotHead, item:getId(), dirIdx, paths, true)
+      end
+    end
+  end
   return v
 end
 
