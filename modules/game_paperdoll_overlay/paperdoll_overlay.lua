@@ -340,6 +340,33 @@ function controller:onGameStart()
     for s = first, last do
       updateSlotOverlay(p, s, p:getInventoryItem(s))
     end
+    -- React to manual walk start to keep overlays aligned while walking
+    self:registerEvents(g_game, {
+      onWalk = function(direction)
+        local cid = p.getId and p:getId() or nil
+        if cid and invisByCreature[cid] then return end
+        local dirIdx = DIR_INDEX[direction] or nil
+        if not dirIdx then return end
+        for s, itemId in pairs(state.current) do
+          local dirPaths = findDirectionalPNGs(s, itemId)
+          if next(dirPaths) ~= nil then
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths)
+          end
+        end
+      end,
+      onAutoWalk = function(player, dirs)
+        local cid = p.getId and p:getId() or nil
+        if cid and invisByCreature[cid] then return end
+        local dir = p.getDirection and p:getDirection() or South
+        local dirIdx = DIR_INDEX[dir] or 2
+        for s, itemId in pairs(state.current) do
+          local dirPaths = findDirectionalPNGs(s, itemId)
+          if next(dirPaths) ~= nil then
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths)
+          end
+        end
+      end
+    }):execute()
     self:cycleEvent(function()
       if not g_game.isOnline() then return end
       local cid = p.getId and p:getId() or nil
