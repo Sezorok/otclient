@@ -178,6 +178,18 @@ end
 
 local function updateSlotOverlay(player, slot, item)
   if not slot then return end
+  -- Do not (re)attach overlays while invisible
+  local cid = player.getId and player:getId() or nil
+  if cid and invisByCreature[cid] then
+    if state.activeEffect[slot] then
+      if player.detachEffectById then
+        player:detachEffectById(state.activeEffect[slot])
+      end
+      state.activeEffect[slot] = nil
+    end
+    state.current[slot] = nil
+    return
+  end
   if not item then
     if state.activeEffect[slot] then
       if player.detachEffectById then
@@ -329,6 +341,11 @@ function controller:onGameStart()
     end
     self:cycleEvent(function()
       if not g_game.isOnline() then return end
+      local cid = p.getId and p:getId() or nil
+      if cid and invisByCreature[cid] then
+        -- While invisible, skip direction switches and inventory re-attach attempts
+        return
+      end
       local dir = p.getDirection and p:getDirection() or South
       local dirIdx = DIR_INDEX[dir] or 2
       if dirIdx ~= lastDirIdx then
