@@ -499,6 +499,10 @@ function controller:onGameStart()
         -- While invisible, skip direction switches and inventory re-attach attempts
         return
       end
+      -- Continuously apply latest offsets to all active overlays to reflect live tweaks
+      for s, _ in pairs(state.current) do
+        applyOffsetsToActive(s)
+      end
       local dir = p.getDirection and p:getDirection() or South
       local dirIdx = DIR_INDEX[dir] or 2
       if dirIdx ~= lastDirIdx then
