@@ -114,6 +114,8 @@ end
 
 local function buildEffectConfig(slot, itemId)
   local cfg = { onTop = true, dirOffset = {} }
+  -- default gentle bounce while walking; controlled at runtime
+  cfg.bounce = { 0, 6, 800 }
   local map = getOffsetsFor(slot, itemId)
   if map then
     if map.N then cfg.dirOffset[North] = { map.N[1] or 0, map.N[2] or 0, map.N[3] and true or false } end
@@ -347,6 +349,7 @@ function controller:onGameStart()
         if cid and invisByCreature[cid] then return end
         local dirIdx = DIR_INDEX[direction] or nil
         if not dirIdx then return end
+        -- increase bounce during step start for a snappier feel
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
@@ -359,6 +362,7 @@ function controller:onGameStart()
         if cid and invisByCreature[cid] then return end
         local dir = p.getDirection and p:getDirection() or South
         local dirIdx = DIR_INDEX[dir] or 2
+        -- sustain gentle bounce while auto-walking
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
