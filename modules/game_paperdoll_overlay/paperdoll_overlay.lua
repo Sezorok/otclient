@@ -308,6 +308,56 @@ function savePaperdollOffsets()
   saveOffsets()
 end
 
+-- Legacy-like console helpers for fine tuning
+local function normalizeDirKey(k)
+  if type(k) ~= 'string' or #k == 0 then return 'S' end
+  local c = k:sub(1,1):upper()
+  if c == 'N' or c == 'E' or c == 'S' or c == 'W' then return c end
+  return 'S'
+end
+
+local function nudgeSlotDefault(slotName, dirKey, dx, dy)
+  loadOffsets()
+  OFFSETS[slotName] = OFFSETS[slotName] or {}
+  OFFSETS[slotName].default = OFFSETS[slotName].default or {}
+  local dk = normalizeDirKey(dirKey)
+  local v = OFFSETS[slotName].default[dk] or { 0, 0, true }
+  v[1] = (v[1] or 0) + (dx or 0)
+  v[2] = (v[2] or 0) + (dy or 0)
+  OFFSETS[slotName].default[dk] = v
+  return v
+end
+
+local function printSlotDefault(slotName)
+  loadOffsets()
+  local m = (OFFSETS[slotName] and OFFSETS[slotName].default) or {}
+  local function fmt(k)
+    local v = m[k] or {0,0,true}
+    return string.format("%s=(%d,%d,%s)", k, v[1] or 0, v[2] or 0, v[3] and 'true' or 'false')
+  end
+  print(string.format("%s offsets: %s %s %s %s", slotName:gsub('^%l', string.upper), fmt('N'), fmt('E'), fmt('S'), fmt('W')))
+end
+
+function paperdoll_nudge_body(dirKey, dx, dy)
+  local v = nudgeSlotDefault('body', dirKey, dx, dy)
+  saveOffsets()
+  return v
+end
+
+function paperdoll_print_body_offsets()
+  printSlotDefault('body')
+end
+
+function paperdoll_nudge_head(dirKey, dx, dy)
+  local v = nudgeSlotDefault('head', dirKey, dx, dy)
+  saveOffsets()
+  return v
+end
+
+function paperdoll_print_head_offsets()
+  printSlotDefault('head')
+end
+
 function controller:onGameStart()
   self:registerEvents(LocalPlayer, {
     onInventoryChange = function(player, slot, item, oldItem)
