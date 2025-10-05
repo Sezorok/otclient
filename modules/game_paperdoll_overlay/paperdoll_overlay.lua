@@ -38,6 +38,57 @@ end
 
 local state = { current = {}, activeEffect = {} }
 
+-- Runtime-configurable offsets (persisted under /settings/paperdoll_offsets.json)
+local OFFSETS = nil
+local OFFSETS_PATH = "/settings/paperdoll_offsets.json"
+local DIR_ALIAS = { N = North, E = East, S = South, W = West }
+local DIR_TO_KEY = { [North] = 'N', [East] = 'E', [South] = 'S', [West] = 'W' }
+
+local function loadOffsets()
+  if OFFSETS then return OFFSETS end
+  if g_resources.fileExists(OFFSETS_PATH) then
+    local ok, data = pcall(function() return json.decode(g_resources.readFileContents(OFFSETS_PATH)) end)
+    if ok and type(data) == 'table' then OFFSETS = data end
+  end
+  if not OFFSETS then
+    OFFSETS = {
+      head = { default = { N = {32,35,true}, E = {32,35,true}, S = {33,32,true}, W = {35,33,true} } },
+      body = { default = { N = { 0,-6,true}, E = { 6,-4,true}, S = { 0, 8,true}, W = {-6,-4,true} } },
+    }
+  end
+  return OFFSETS
+end
+
+local function saveOffsets()
+  if not OFFSETS then return end
+  local ok, data = pcall(function() return json.encode(OFFSETS, 2) end)
+  if ok then g_resources.writeFileContents(OFFSETS_PATH, data) end
+end
+
+local function getSlotName(slot)
+  return SLOT_DIR[slot]
+end
+
+local function getOffsetsFor(slot, itemId)
+  local slotName = getSlotName(slot)
+  local conf = loadOffsets()[slotName]
+  if not conf then return nil end
+  if itemId and conf.items and conf.items[tostring(itemId)] then
+    return conf.items[tostring(itemId)], true
+  end
+  return conf.default, false
+end
+
+local function applyOffsetsForAllDirs(eff, slot, itemId)
+  local map = getOffsetsFor(slot, itemId)
+  if not map then applyDefaultOffsets(eff); return end
+  local function applyDir(dirKey)
+    local v = map[dirKey]
+    if v then eff:setDirOffset(DIR_ALIAS[dirKey], v[1] or 0, v[2] or 0, v[3] and true or false) end
+  end
+  applyDir('N'); applyDir('E'); applyDir('S'); applyDir('W')
+end
+
 local function makeEffectId(slot, itemId, dirIdx)
   return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0)
 end
@@ -69,7 +120,7 @@ local function ensureEffects(slot, itemId, dirPaths)
         local eff = g_attachedEffects.getById(effId)
         if eff then
           eff:setOnTop(true)
-          applyDefaultOffsets(eff)
+          applyOffsetsForAllDirs(eff, slot, itemId)
         end
       end
     end
@@ -176,7 +227,7 @@ function init()
                       local eff = g_attachedEffects.getById(effId)
                       if eff then
                         eff:setOnTop(true)
-                        applyDefaultOffsets(eff)
+                        applyOffsetsForAllDirs(eff, slot, id)
                       end
                     end
                   end
@@ -188,6 +239,24 @@ function init()
       end
     end
   end
+end
+
+-- Console helpers
+function setSlotOffsets(slotName, map)
+  loadOffsets()
+  OFFSETS[slotName] = OFFSETS[slotName] or {}
+  OFFSETS[slotName].default = map
+end
+
+function setItemOffsets(slotName, itemId, map)
+  loadOffsets()
+  OFFSETS[slotName] = OFFSETS[slotName] or {}
+  OFFSETS[slotName].items = OFFSETS[slotName].items or {}
+  OFFSETS[slotName].items[tostring(itemId)] = map
+end
+
+function savePaperdollOffsets()
+  saveOffsets()
 end
 
 function controller:onGameStart()
