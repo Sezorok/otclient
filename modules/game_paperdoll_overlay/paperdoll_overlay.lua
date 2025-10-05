@@ -42,14 +42,19 @@ local function makeEffectId(slot, itemId, dirIdx)
   return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0)
 end
 
+local BASE_DIRS = { "/images/paperdll/", "/images/paperdoll/" } -- support both spellings
+
 local function findDirectionalPNGs(slot, itemId)
   local dirName = SLOT_DIR[slot]
   if not dirName then return {} end
-  local base = string.format("/images/paperdll/%s/%d_", dirName, itemId)
   local map = {}
-  for i = 0, 3 do
-    local path = base .. i .. ".png"
-    if g_resources.fileExists(path) then map[i] = path end
+  for _, baseDir in ipairs(BASE_DIRS) do
+    local any = false
+    for i = 0, 3 do
+      local path = string.format("%s%s/%d_%d.png", baseDir, dirName, itemId, i)
+      if g_resources.fileExists(path) then map[i] = path; any = true end
+    end
+    if any then return map end
   end
   return map
 end
@@ -150,30 +155,29 @@ function init()
   controller:init()
 
   -- Pre-register available paperdoll textures to avoid on-demand errors
-  local baseDir = "/images/paperdll/"
   local slotDirs = { "head", "body", "back", "left", "right", "legs", "feet", "neck", "finger", "ammo", "purse" }
-  for _, dir in ipairs(slotDirs) do
-    local realDir = g_resources.getRealDir(baseDir .. dir)
-    if realDir and g_resources.directoryExists(realDir) then
-      for _, file in ipairs(g_resources.getDirectoryFiles(realDir)) do
-        if file:match("_%d+%.png$") then
-          local id = tonumber(file:match("^(%d+)_"))
-          if id then
-            -- Probe all directions 0..3
-            for i = 0, 3 do
-              local path = string.format("%s%s/%d_%d.png", baseDir, dir, id, i)
-              if g_resources.fileExists(path) then
-                -- map dir name back to slot to compute a stable effect id
-                local slot
-                for k, name in pairs(SLOT_DIR) do if name == dir then slot = k break end end
-                if slot then
-                  local effId = makeEffectId(slot, id, i)
-                  if not g_attachedEffects.getById(effId) then
-                    g_attachedEffects.registerByImage(effId, "paperdll", path, true)
-                    local eff = g_attachedEffects.getById(effId)
-                    if eff then
-                      eff:setOnTop(true)
-                      applyDefaultOffsets(eff)
+  for _, baseDir in ipairs(BASE_DIRS) do
+    for _, dir in ipairs(slotDirs) do
+      local realDir = g_resources.getRealDir(baseDir .. dir)
+      if realDir and g_resources.directoryExists(realDir) then
+        for _, file in ipairs(g_resources.getDirectoryFiles(realDir)) do
+          if file:match("_%d+%.png$") then
+            local id = tonumber(file:match("^(%d+)_"))
+            if id then
+              for i = 0, 3 do
+                local path = string.format("%s%s/%d_%d.png", baseDir, dir, id, i)
+                if g_resources.fileExists(path) then
+                  local slot
+                  for k, name in pairs(SLOT_DIR) do if name == dir then slot = k break end end
+                  if slot then
+                    local effId = makeEffectId(slot, id, i)
+                    if not g_attachedEffects.getById(effId) then
+                      g_attachedEffects.registerByImage(effId, "paperdll", path, true)
+                      local eff = g_attachedEffects.getById(effId)
+                      if eff then
+                        eff:setOnTop(true)
+                        applyDefaultOffsets(eff)
+                      end
                     end
                   end
                 end
