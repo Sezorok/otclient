@@ -1,28 +1,45 @@
 local function onAttach(effect, owner)
+    if not AttachedEffectManager then return end
     local category, thingId = AttachedEffectManager.getDataThing(owner)
+    local effDef = AttachedEffectManager.get(effect:getId())
+    if not effDef then return end
     local config = AttachedEffectManager.getConfig(effect:getId(), category, thingId)
-
+    if not config then return end
     if config.isThingConfig then
         AttachedEffectManager.executeThingConfig(effect, category, thingId)
     end
-
     if config.onAttach then
         config.onAttach(effect, owner, config.__onAttach)
     end
 end
 
 local function onDetach(effect, oldOwner)
+    if not AttachedEffectManager then return end
     local category, thingId = AttachedEffectManager.getDataThing(oldOwner)
+    local effDef = AttachedEffectManager.get(effect:getId())
+    if not effDef then return end
     local config = AttachedEffectManager.getConfig(effect:getId(), category, thingId)
-
+    if not config then return end
     if config.onDetach then
         config.onDetach(effect, oldOwner, config.__onDetach)
     end
 end
 
 local function onOutfitChange(creature, outfit, oldOutfit)
-    for _i, effect in pairs(creature:getAttachedEffects()) do
-        AttachedEffectManager.executeThingConfig(effect, ThingCategoryCreature, outfit.type)
+    -- Guard manager existence and effect validity
+    if not AttachedEffectManager or not AttachedEffectManager.executeThingConfig then return end
+    local ok, list = pcall(function() return creature:getAttachedEffects() end)
+    if not ok or type(list) ~= 'table' then return end
+    for _i, effect in pairs(list) do
+        if effect and effect.getId then
+            local effDef = AttachedEffectManager.get(effect:getId())
+            if effDef then
+                local cfg = AttachedEffectManager.getConfig(effect:getId(), ThingCategoryCreature, outfit.type)
+                if cfg then
+                    AttachedEffectManager.executeThingConfig(effect, ThingCategoryCreature, outfit.type)
+                end
+            end
+        end
     end
 end
 
