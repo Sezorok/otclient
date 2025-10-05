@@ -21,8 +21,17 @@ local function onDetach(effect, oldOwner)
 end
 
 local function onOutfitChange(creature, outfit, oldOutfit)
-    for _i, effect in pairs(creature:getAttachedEffects()) do
-        AttachedEffectManager.executeThingConfig(effect, ThingCategoryCreature, outfit.type)
+    -- Guard manager existence and effect validity
+    if not AttachedEffectManager or not AttachedEffectManager.executeThingConfig then return end
+    local ok, list = pcall(function() return creature:getAttachedEffects() end)
+    if not ok or type(list) ~= 'table' then return end
+    for _i, effect in pairs(list) do
+        if effect and effect.getId then
+            local cfg = AttachedEffectManager.getConfig(effect:getId(), ThingCategoryCreature, outfit.type)
+            if cfg then
+                AttachedEffectManager.executeThingConfig(effect, ThingCategoryCreature, outfit.type)
+            end
+        end
     end
 end
 

@@ -180,7 +180,9 @@ local function updateSlotOverlay(player, slot, item)
   if not slot then return end
   if not item then
     if state.activeEffect[slot] then
-      player:detachEffectById(state.activeEffect[slot])
+      if player.detachEffectById then
+        player:detachEffectById(state.activeEffect[slot])
+      end
       state.activeEffect[slot] = nil
     end
     state.current[slot] = nil
@@ -194,7 +196,9 @@ local function updateSlotOverlay(player, slot, item)
   if next(dirPaths) == nil then
     -- no images for this item/slot, ensure we detach any previous overlay
     if state.activeEffect[slot] then
-      player:detachEffectById(state.activeEffect[slot])
+      if player.detachEffectById then
+        player:detachEffectById(state.activeEffect[slot])
+      end
       state.activeEffect[slot] = nil
     end
     return
@@ -250,7 +254,9 @@ function init()
                   for k, name in pairs(SLOT_DIR) do if name == dir then slot = k break end end
                   if slot then
                     local effId = makeEffectId(slot, id, i)
-                    if not g_attachedEffects.getById(effId) then
+                    if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
+                      AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, id))
+                    elseif not g_attachedEffects.getById(effId) then
                       g_attachedEffects.registerByImage(effId, "paperdll", path, true)
                       local eff = g_attachedEffects.getById(effId)
                       if eff then
