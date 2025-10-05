@@ -152,7 +152,7 @@ local function ensureEffects(slot, itemId, dirPaths)
   end
 end
 
-local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
+local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRestart)
   local wantedEffId = makeEffectId(slot, itemId, dirIdx)
   if not dirPaths[dirIdx] then
     if dirPaths[2] then
@@ -162,14 +162,14 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
     end
   end
   local active = state.activeEffect[slot]
-  if active and active ~= wantedEffId then
+  if active and (active ~= wantedEffId or forceRestart) then
     -- safe detach if API available, otherwise ignore
     if player.detachEffectById then
       player:detachEffectById(active)
     end
     state.activeEffect[slot] = nil
   end
-  if not player.getAttachedEffectById or not player:getAttachedEffectById(wantedEffId) then
+  if forceRestart or not player.getAttachedEffectById or not player:getAttachedEffectById(wantedEffId) then
     local eff = g_attachedEffects.getById(wantedEffId)
     if eff then
       player:attachEffect(eff)
@@ -349,11 +349,11 @@ function controller:onGameStart()
         if cid and invisByCreature[cid] then return end
         local dirIdx = DIR_INDEX[direction] or nil
         if not dirIdx then return end
-        -- increase bounce during step start for a snappier feel
+        -- restart overlay per slot on step start to kick bounce
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
-            switchDirEffect(p, s, itemId, dirIdx, dirPaths)
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths, true)
           end
         end
       end,
