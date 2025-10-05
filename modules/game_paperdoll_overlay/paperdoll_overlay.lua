@@ -37,6 +37,8 @@ local function applyDefaultOffsets(eff)
 end
 
 local state = { current = {}, activeEffect = {} }
+-- must be defined before functions to be captured as upvalue
+local invisByCreature = {}
 
 -- Runtime-configurable offsets (persisted under /settings/paperdoll_offsets.json)
 local OFFSETS = nil
@@ -225,7 +227,6 @@ end
 local controller = Controller:new()
 local lastDirIdx = nil
 local cycleName = "paperdoll_dir"
-local invisByCreature = {}
 
 local function isInvisible(outfit)
   -- Protocol sets invisible as: lookType=0 and lookTypeEx=0 -> auxType=13 (effect id)
