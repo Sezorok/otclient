@@ -1750,9 +1750,6 @@ function testExtendedView(mode)
         modules.game_minimap.extendedView(extendedView)
         modules.game_healthinfo.extendedView(extendedView)
         modules.game_inventory.extendedView(extendedView)
-        if modules.game_paperdoll and modules.game_paperdoll.extendedView then
-            modules.game_paperdoll.extendedView(extendedView)
-        end
         modules.client_topmenu.extendedView(extendedView)
         modules.game_mainpanel.toggleExtendedViewButtons(extendedView)
     end)
