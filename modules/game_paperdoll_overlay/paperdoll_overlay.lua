@@ -97,6 +97,7 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
 end
 
 local function updateSlotOverlay(player, slot, item)
+  if not slot then return end
   if not item then
     if state.activeEffect[slot] then
       player:detachEffectById(state.activeEffect[slot])
@@ -110,7 +111,14 @@ local function updateSlotOverlay(player, slot, item)
   state.current[slot] = itemId
 
   local dirPaths = findDirectionalPNGs(slot, itemId)
-  if next(dirPaths) == nil then return end
+  if next(dirPaths) == nil then
+    -- no images for this item/slot, ensure we detach any previous overlay
+    if state.activeEffect[slot] then
+      player:detachEffectById(state.activeEffect[slot])
+      state.activeEffect[slot] = nil
+    end
+    return
+  end
   ensureEffects(slot, itemId, dirPaths)
 
   local dir = player.getDirection and player:getDirection() or South
@@ -206,7 +214,10 @@ function controller:onGameStart()
 
   local p = g_game.getLocalPlayer()
   if p then
-    for s = InventorySlotFirst, InventorySlotLast do
+    -- Guard against inconsistent slot bounds on some protocols
+    local first = InventorySlotFirst or 1
+    local last  = InventorySlotLast or InventorySlotPurse or 11
+    for s = first, last do
       updateSlotOverlay(p, s, p:getInventoryItem(s))
     end
     self:cycleEvent(function()
@@ -223,7 +234,7 @@ function controller:onGameStart()
         lastDirIdx = dirIdx
       end
       -- Inventory sync: ensure overlays attach/detach even if onInventoryChange isn't fired
-      for s = InventorySlotFirst, InventorySlotLast do
+      for s = first, last do
         local it = p:getInventoryItem(s)
         local curr = state.current[s]
         local currId = curr
