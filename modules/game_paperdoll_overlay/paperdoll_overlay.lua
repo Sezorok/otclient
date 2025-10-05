@@ -110,18 +110,31 @@ local function findDirectionalPNGs(slot, itemId)
   return map
 end
 
+local function buildEffectConfig(slot, itemId)
+  local cfg = { onTop = true, dirOffset = {} }
+  local map = getOffsetsFor(slot, itemId)
+  if map then
+    if map.N then cfg.dirOffset[North] = { map.N[1] or 0, map.N[2] or 0, map.N[3] and true or false } end
+    if map.E then cfg.dirOffset[East]  = { map.E[1] or 0, map.E[2] or 0, map.E[3] and true or false } end
+    if map.S then cfg.dirOffset[South] = { map.S[1] or 0, map.S[2] or 0, map.S[3] and true or false } end
+    if map.W then cfg.dirOffset[West]  = { map.W[1] or 0, map.W[2] or 0, map.W[3] and true or false } end
+  else
+    -- fallback to defaults
+    cfg.dirOffset[North] = { 0, -6, true }
+    cfg.dirOffset[East]  = { 6, -4, true }
+    cfg.dirOffset[South] = { 0,  8, true }
+    cfg.dirOffset[West]  = { -6, -4, true }
+  end
+  return cfg
+end
+
 local function ensureEffects(slot, itemId, dirPaths)
   for i = 0, 3 do
     local path = dirPaths[i]
     if path then
       local effId = makeEffectId(slot, itemId, i)
-      if not g_attachedEffects.getById(effId) then
-        g_attachedEffects.registerByImage(effId, "paperdll", path, true)
-        local eff = g_attachedEffects.getById(effId)
-        if eff then
-          eff:setOnTop(true)
-          applyOffsetsForAllDirs(eff, slot, itemId)
-        end
+      if not AttachedEffectManager.get(effId) then
+        AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, itemId))
       end
     end
   end
@@ -138,10 +151,13 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
   end
   local active = state.activeEffect[slot]
   if active and active ~= wantedEffId then
-    player:detachEffectById(active)
+    -- safe detach if API available, otherwise ignore
+    if player.detachEffectById then
+      player:detachEffectById(active)
+    end
     state.activeEffect[slot] = nil
   end
-  if not player:getAttachedEffectById(wantedEffId) then
+  if not player.getAttachedEffectById or not player:getAttachedEffectById(wantedEffId) then
     local eff = g_attachedEffects.getById(wantedEffId)
     if eff then
       player:attachEffect(eff)
