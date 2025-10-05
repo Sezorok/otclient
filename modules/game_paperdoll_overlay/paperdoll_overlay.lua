@@ -228,6 +228,10 @@ end
 -- Module lifecycle wrappers to match .otmod hooks
 function init()
   controller:init()
+  -- ensure manager module is available for effect configs
+  if g_modules and g_modules.ensureModuleLoaded then
+    g_modules.ensureModuleLoaded('game_attachedeffects')
+  end
 
   -- Pre-register available paperdoll textures to avoid on-demand errors
   local slotDirs = { "head", "body", "back", "left", "right", "legs", "feet", "neck", "finger", "ammo", "purse" }
