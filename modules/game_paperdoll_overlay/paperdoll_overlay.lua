@@ -97,6 +97,7 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
 end
 
 local function updateSlotOverlay(player, slot, item)
+  if not slot then return end
   if not item then
     if state.activeEffect[slot] then
       player:detachEffectById(state.activeEffect[slot])
@@ -110,7 +111,14 @@ local function updateSlotOverlay(player, slot, item)
   state.current[slot] = itemId
 
   local dirPaths = findDirectionalPNGs(slot, itemId)
-  if next(dirPaths) == nil then return end
+  if next(dirPaths) == nil then
+    -- no images for this item/slot, ensure we detach any previous overlay
+    if state.activeEffect[slot] then
+      player:detachEffectById(state.activeEffect[slot])
+      state.activeEffect[slot] = nil
+    end
+    return
+  end
   ensureEffects(slot, itemId, dirPaths)
 
   local dir = player.getDirection and player:getDirection() or South
@@ -140,6 +148,42 @@ end
 -- Module lifecycle wrappers to match .otmod hooks
 function init()
   controller:init()
+
+  -- Pre-register available paperdoll textures to avoid on-demand errors
+  local baseDir = "/images/paperdll/"
+  local slotDirs = { "head", "body", "back", "left", "right", "legs", "feet", "neck", "finger", "ammo", "purse" }
+  for _, dir in ipairs(slotDirs) do
+    local realDir = g_resources.getRealDir(baseDir .. dir)
+    if realDir and g_resources.directoryExists(realDir) then
+      for _, file in ipairs(g_resources.getDirectoryFiles(realDir)) do
+        if file:match("_%d+%.png$") then
+          local id = tonumber(file:match("^(%d+)_"))
+          if id then
+            -- Probe all directions 0..3
+            for i = 0, 3 do
+              local path = string.format("%s%s/%d_%d.png", baseDir, dir, id, i)
+              if g_resources.fileExists(path) then
+                -- map dir name back to slot to compute a stable effect id
+                local slot
+                for k, name in pairs(SLOT_DIR) do if name == dir then slot = k break end end
+                if slot then
+                  local effId = makeEffectId(slot, id, i)
+                  if not g_attachedEffects.getById(effId) then
+                    g_attachedEffects.registerByImage(effId, "paperdll", path, true)
+                    local eff = g_attachedEffects.getById(effId)
+                    if eff then
+                      eff:setOnTop(true)
+                      applyDefaultOffsets(eff)
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
 end
 
 function controller:onGameStart()
@@ -170,7 +214,10 @@ function controller:onGameStart()
 
   local p = g_game.getLocalPlayer()
   if p then
-    for s = InventorySlotFirst, InventorySlotLast do
+    -- Guard against inconsistent slot bounds on some protocols
+    local first = InventorySlotFirst or 1
+    local last  = InventorySlotLast or InventorySlotPurse or 11
+    for s = first, last do
       updateSlotOverlay(p, s, p:getInventoryItem(s))
     end
     self:cycleEvent(function()
@@ -187,7 +234,7 @@ function controller:onGameStart()
         lastDirIdx = dirIdx
       end
       -- Inventory sync: ensure overlays attach/detach even if onInventoryChange isn't fired
-      for s = InventorySlotFirst, InventorySlotLast do
+      for s = first, last do
         local it = p:getInventoryItem(s)
         local curr = state.current[s]
         local currId = curr
