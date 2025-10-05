@@ -44,7 +44,8 @@ local invisByCreature = {}
 local OFFSETS = nil
 local OFFSETS_PATH = "/settings/paperdoll_offsets.json"
 local DIR_ALIAS = { N = North, E = East, S = South, W = West }
-local DIR_TO_KEY = { [North] = 'N', [East] = 'E', [South] = 'S', [West] = 'W' }
+-- Ensure both enum constants and raw numeric directions resolve
+local DIR_TO_KEY = { [North] = 'N', [East] = 'E', [South] = 'S', [West] = 'W', [0]='N', [1]='E', [2]='S', [3]='W' }
 
 local function loadOffsets()
   if OFFSETS then return OFFSETS end
@@ -365,6 +366,8 @@ function paperdoll_nudge_body(dirKey, dx, dy)
   if p then
     local dir = p.getDirection and p:getDirection() or South
     local dirIdx = DIR_INDEX[dir] or 2
+    -- re-apply offsets directly to active effect to avoid manager resets
+    applyOffsetsToActive(InventorySlotBody)
     local item = p:getInventoryItem(InventorySlotBody)
     if item then
       local paths = findDirectionalPNGs(InventorySlotBody, item:getId())
@@ -387,6 +390,7 @@ function paperdoll_nudge_head(dirKey, dx, dy)
   if p then
     local dir = p.getDirection and p:getDirection() or South
     local dirIdx = DIR_INDEX[dir] or 2
+    applyOffsetsToActive(InventorySlotHead)
     local item = p:getInventoryItem(InventorySlotHead)
     if item then
       local paths = findDirectionalPNGs(InventorySlotHead, item:getId())
