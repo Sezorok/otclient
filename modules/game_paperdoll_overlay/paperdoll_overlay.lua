@@ -102,6 +102,8 @@ local function applyOffsetsToActive(slot)
   local item = p:getInventoryItem(slot)
   local itemId = item and item:getId() or 0
   applyOffsetsForAllDirs(eff, slot, itemId)
+  local dir = p.getDirection and p:getDirection() or South
+  if eff.setDirection then eff:setDirection(dir) end
 end
 
 local function makeEffectId(slot, itemId, dirIdx)
