@@ -385,6 +385,29 @@ function paperdoll_print_head_offsets()
   printSlotDefault('head')
 end
 
+-- Convenience: nudge according to current facing direction
+local function getCurrentDirKey()
+  local p = g_game.getLocalPlayer()
+  local dir = p and (p.getDirection and p:getDirection() or South) or South
+  return DIR_TO_KEY[dir] or 'S'
+end
+
+function paperdoll_nudge_body_current(dx, dy)
+  local dk = getCurrentDirKey()
+  return paperdoll_nudge_body(dk, dx, dy)
+end
+
+function paperdoll_nudge_head_current(dx, dy)
+  local dk = getCurrentDirKey()
+  return paperdoll_nudge_head(dk, dx, dy)
+end
+
+function paperdoll_print_current_dir()
+  local p = g_game.getLocalPlayer()
+  local dir = p and (p.getDirection and p:getDirection() or South) or South
+  print('current dir:', dir, 'key=', getCurrentDirKey())
+end
+
 function controller:onGameStart()
   self:registerEvents(LocalPlayer, {
     onInventoryChange = function(player, slot, item, oldItem)
