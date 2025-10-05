@@ -187,6 +187,9 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRest
     if eff then
       -- Apply latest offsets at attach time so runtime changes take effect
       applyOffsetsForAllDirs(eff, slot, itemId)
+      -- Ensure effect respects current facing direction for dir-specific offsets
+      local dirConst = INDEX_TO_DIR[dirIdx] or South
+      if eff.setDirection then eff:setDirection(dirConst) end
       player:attachEffect(eff)
       state.activeEffect[slot] = wantedEffId
     end
