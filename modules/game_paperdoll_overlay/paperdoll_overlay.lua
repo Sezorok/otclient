@@ -395,7 +395,7 @@ function controller:onGameStart()
           updateSlotOverlay(p, s, it)
         end
       end
-    end, 200, cycleName)
+    end, 100, cycleName)
   end
 end
 
