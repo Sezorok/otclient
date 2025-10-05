@@ -145,6 +145,25 @@ local function buildEffectConfig(slot, itemId)
   return cfg
 end
 
+local function updateManagerConfigFor(slot, itemId)
+  if not AttachedEffectManager or not AttachedEffectManager.get then return end
+  local map = getOffsetsFor(slot, itemId) or {}
+  for i = 0, 3 do
+    local effId = makeEffectId(slot, itemId, i)
+    local def = AttachedEffectManager.get(effId)
+    if def then
+      def.config = def.config or {}
+      def.config.onTop = true
+      def.config.dirOffset = def.config.dirOffset or {}
+      local function put(dirConst, key)
+        local v = map[key]
+        if v then def.config.dirOffset[dirConst] = { v[1] or 0, v[2] or 0, v[3] and true or false } end
+      end
+      put(North,'N'); put(East,'E'); put(South,'S'); put(West,'W')
+    end
+  end
+end
+
 local function ensureEffects(slot, itemId, dirPaths)
   for i = 0, 3 do
     local path = dirPaths[i]
@@ -316,6 +335,14 @@ function setSlotOffsets(slotName, map)
   -- live apply if current slot matches
   if slotName == 'head' then applyOffsetsToActive(InventorySlotHead) end
   if slotName == 'body' then applyOffsetsToActive(InventorySlotBody) end
+  local p = g_game.getLocalPlayer()
+  if p then
+    local slot = slotName == 'head' and InventorySlotHead or slotName == 'body' and InventorySlotBody or nil
+    if slot then
+      local it = p:getInventoryItem(slot)
+      if it then updateManagerConfigFor(slot, it:getId()) end
+    end
+  end
 end
 
 function setItemOffsets(slotName, itemId, map)
@@ -325,6 +352,8 @@ function setItemOffsets(slotName, itemId, map)
   OFFSETS[slotName].items[tostring(itemId)] = map
   if slotName == 'head' then applyOffsetsToActive(InventorySlotHead) end
   if slotName == 'body' then applyOffsetsToActive(InventorySlotBody) end
+  local slot = slotName == 'head' and InventorySlotHead or slotName == 'body' and InventorySlotBody or nil
+  if slot then updateManagerConfigFor(slot, itemId) end
 end
 
 function savePaperdollOffsets()
