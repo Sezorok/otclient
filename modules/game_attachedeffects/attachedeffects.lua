@@ -1,6 +1,8 @@
 local function onAttach(effect, owner)
     if not AttachedEffectManager then return end
     local category, thingId = AttachedEffectManager.getDataThing(owner)
+    local effDef = AttachedEffectManager.get(effect:getId())
+    if not effDef then return end
     local config = AttachedEffectManager.getConfig(effect:getId(), category, thingId)
     if not config then return end
     if config.isThingConfig then
@@ -14,6 +16,8 @@ end
 local function onDetach(effect, oldOwner)
     if not AttachedEffectManager then return end
     local category, thingId = AttachedEffectManager.getDataThing(oldOwner)
+    local effDef = AttachedEffectManager.get(effect:getId())
+    if not effDef then return end
     local config = AttachedEffectManager.getConfig(effect:getId(), category, thingId)
     if not config then return end
     if config.onDetach then
@@ -28,9 +32,12 @@ local function onOutfitChange(creature, outfit, oldOutfit)
     if not ok or type(list) ~= 'table' then return end
     for _i, effect in pairs(list) do
         if effect and effect.getId then
-            local cfg = AttachedEffectManager.getConfig(effect:getId(), ThingCategoryCreature, outfit.type)
-            if cfg then
-                AttachedEffectManager.executeThingConfig(effect, ThingCategoryCreature, outfit.type)
+            local effDef = AttachedEffectManager.get(effect:getId())
+            if effDef then
+                local cfg = AttachedEffectManager.getConfig(effect:getId(), ThingCategoryCreature, outfit.type)
+                if cfg then
+                    AttachedEffectManager.executeThingConfig(effect, ThingCategoryCreature, outfit.type)
+                end
             end
         end
     end
