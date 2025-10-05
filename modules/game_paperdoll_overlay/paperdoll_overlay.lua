@@ -52,8 +52,8 @@ local function loadOffsets()
   end
   if not OFFSETS then
     OFFSETS = {
-      head = { default = { N = {32,35,true}, E = {32,35,true}, S = {33,32,true}, W = {35,33,true} } },
-      body = { default = { N = { 0,-6,true}, E = { 6,-4,true}, S = { 0, 8,true}, W = {-6,-4,true} } },
+      head = { default = { N = {31,37,true}, E = {32,33,true}, S = {33,32,true}, W = {35,30,true} } },
+      body = { default = { N = {32,34,true}, E = {33,33,true}, S = {33,34,true}, W = {34,31,true} } },
     }
   end
   return OFFSETS
@@ -133,8 +133,16 @@ local function ensureEffects(slot, itemId, dirPaths)
     local path = dirPaths[i]
     if path then
       local effId = makeEffectId(slot, itemId, i)
-      if not AttachedEffectManager.get(effId) then
+      -- Prefer manager if available; fallback to direct registration
+      if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
         AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, itemId))
+      elseif not g_attachedEffects.getById(effId) then
+        g_attachedEffects.registerByImage(effId, "paperdll", path, true)
+        local eff = g_attachedEffects.getById(effId)
+        if eff then
+          eff:setOnTop(true)
+          applyOffsetsForAllDirs(eff, slot, itemId)
+        end
       end
     end
   end
