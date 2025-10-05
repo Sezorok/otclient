@@ -91,6 +91,18 @@ local function applyOffsetsForAllDirs(eff, slot, itemId)
   applyDir('N'); applyDir('E'); applyDir('S'); applyDir('W')
 end
 
+local function applyOffsetsToActive(slot)
+  local p = g_game.getLocalPlayer()
+  if not p then return end
+  local activeId = state.activeEffect[slot]
+  if not activeId then return end
+  local eff = p.getAttachedEffectById and p:getAttachedEffectById(activeId)
+  if not eff then return end
+  local item = p:getInventoryItem(slot)
+  local itemId = item and item:getId() or 0
+  applyOffsetsForAllDirs(eff, slot, itemId)
+end
+
 local function makeEffectId(slot, itemId, dirIdx)
   return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0)
 end
@@ -297,6 +309,9 @@ function setSlotOffsets(slotName, map)
   loadOffsets()
   OFFSETS[slotName] = OFFSETS[slotName] or {}
   OFFSETS[slotName].default = map
+  -- live apply if current slot matches
+  if slotName == 'head' then applyOffsetsToActive(InventorySlotHead) end
+  if slotName == 'body' then applyOffsetsToActive(InventorySlotBody) end
 end
 
 function setItemOffsets(slotName, itemId, map)
@@ -304,6 +319,8 @@ function setItemOffsets(slotName, itemId, map)
   OFFSETS[slotName] = OFFSETS[slotName] or {}
   OFFSETS[slotName].items = OFFSETS[slotName].items or {}
   OFFSETS[slotName].items[tostring(itemId)] = map
+  if slotName == 'head' then applyOffsetsToActive(InventorySlotHead) end
+  if slotName == 'body' then applyOffsetsToActive(InventorySlotBody) end
 end
 
 function savePaperdollOffsets()
