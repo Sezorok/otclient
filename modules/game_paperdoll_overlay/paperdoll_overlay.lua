@@ -127,10 +127,14 @@ local function findDirectionalPNGs(slot, itemId)
   return map
 end
 
+local WALK_BOUNCE = false
+local BOUNCE_PARAMS = { 0, 6, 800 }
+
 local function buildEffectConfig(slot, itemId)
   local cfg = { onTop = true, dirOffset = {} }
-  -- default gentle bounce while walking; controlled at runtime
-  cfg.bounce = { 0, 6, 800 }
+  if WALK_BOUNCE then
+    cfg.bounce = { BOUNCE_PARAMS[1], BOUNCE_PARAMS[2], BOUNCE_PARAMS[3] }
+  end
   local map = getOffsetsFor(slot, itemId)
   if map then
     if map.N then cfg.dirOffset[North] = { map.N[1] or 0, map.N[2] or 0, map.N[3] and true or false } end
@@ -550,16 +554,17 @@ function controller:onGameStart()
     end
     -- React to manual walk start to keep overlays aligned while walking
     self:registerEvents(g_game, {
-      onWalk = function(direction)
+      onWalk = function(_direction)
         local cid = p.getId and p:getId() or nil
         if cid and invisByCreature[cid] then return end
-        local dirIdx = DIR_INDEX[direction] or nil
-        if not dirIdx then return end
-        -- restart overlay per slot on step start to kick bounce
+        -- Use creature facing (cardinal), ignore diagonal params
+        local dir = p.getDirection and p:getDirection() or South
+        local dirIdx = DIR_INDEX[dir] or 2
+        -- keep overlays aligned without reattach to avoid flicker/jumps
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
-            switchDirEffect(p, s, itemId, dirIdx, dirPaths, true)
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false)
           end
         end
       end,
@@ -568,11 +573,10 @@ function controller:onGameStart()
         if cid and invisByCreature[cid] then return end
         local dir = p.getDirection and p:getDirection() or South
         local dirIdx = DIR_INDEX[dir] or 2
-        -- sustain gentle bounce while auto-walking
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
-            switchDirEffect(p, s, itemId, dirIdx, dirPaths)
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false)
           end
         end
       end
