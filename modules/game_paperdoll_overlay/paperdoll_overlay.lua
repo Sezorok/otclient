@@ -85,11 +85,26 @@ end
 local function applyOffsetsForAllDirs(eff, slot, itemId)
   local map = getOffsetsFor(slot, itemId)
   if not map then applyDefaultOffsets(eff); return end
+  local function avg(a, b)
+    if not a and not b then return {0,0,true} end
+    if not a then return { b[1] or 0, b[2] or 0, b[3] and true or false } end
+    if not b then return { a[1] or 0, a[2] or 0, a[3] and true or false } end
+    return { math.floor(((a[1] or 0) + (b[1] or 0)) / 2), math.floor(((a[2] or 0) + (b[2] or 0)) / 2), (a[3] and true) or (b[3] and true) or false }
+  end
   local function applyDir(dirKey)
     local v = map[dirKey]
     if v then eff:setDirOffset(DIR_ALIAS[dirKey], v[1] or 0, v[2] or 0, v[3] and true or false) end
   end
   applyDir('N'); applyDir('E'); applyDir('S'); applyDir('W')
+  -- set diagonal offsets as blended between adjacent cardinals
+  local vNE = avg(map.N, map.E)
+  local vSE = avg(map.S, map.E)
+  local vSW = avg(map.S, map.W)
+  local vNW = avg(map.N, map.W)
+  eff:setDirOffset(NorthEast, vNE[1] or 0, vNE[2] or 0, vNE[3] and true or false)
+  eff:setDirOffset(SouthEast, vSE[1] or 0, vSE[2] or 0, vSE[3] and true or false)
+  eff:setDirOffset(SouthWest, vSW[1] or 0, vSW[2] or 0, vSW[3] and true or false)
+  eff:setDirOffset(NorthWest, vNW[1] or 0, vNW[2] or 0, vNW[3] and true or false)
 end
 
 local function applyOffsetsToActive(slot)
@@ -589,9 +604,7 @@ function controller:onGameStart()
         return
       end
       -- Continuously apply latest offsets to all active overlays to reflect live tweaks
-      for s, _ in pairs(state.current) do
-        applyOffsetsToActive(s)
-      end
+      for s, _ in pairs(state.current) do applyOffsetsToActive(s) end
       local dir = p.getDirection and p:getDirection() or South
       local dirIdx = DIR_INDEX[dir] or 2
       if dirIdx ~= lastDirIdx then
