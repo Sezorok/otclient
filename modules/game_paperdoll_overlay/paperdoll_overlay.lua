@@ -376,8 +376,9 @@ local function nudgeSlotDefault(slotName, dirKey, dx, dy)
   OFFSETS[slotName].default = OFFSETS[slotName].default or {}
   local dk = normalizeDirKey(dirKey)
   local v = OFFSETS[slotName].default[dk] or { 0, 0, true }
-  v[1] = (v[1] or 0) + (dx or 0)
-  v[2] = (v[2] or 0) + (dy or 0)
+  -- screen-based nudge: +x => right, +y => down; stored offsets are subtracted at draw
+  v[1] = (v[1] or 0) - (dx or 0)
+  v[2] = (v[2] or 0) - (dy or 0)
   OFFSETS[slotName].default[dk] = v
   return v
 end
@@ -390,8 +391,9 @@ local function nudgeSlotItem(slotName, itemId, dirKey, dx, dy)
   local key = tostring(itemId)
   OFFSETS[slotName].items[key] = OFFSETS[slotName].items[key] or {}
   local v = OFFSETS[slotName].items[key][dk] or { 0, 0, true }
-  v[1] = (v[1] or 0) + (dx or 0)
-  v[2] = (v[2] or 0) + (dy or 0)
+  -- screen-based nudge: +x => right, +y => down; stored offsets are subtracted at draw
+  v[1] = (v[1] or 0) - (dx or 0)
+  v[2] = (v[2] or 0) - (dy or 0)
   OFFSETS[slotName].items[key][dk] = v
   return v
 end
