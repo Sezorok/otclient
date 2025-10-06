@@ -1,4 +1,11 @@
+local function isPaperdollEffect(effect)
+    if not effect or not effect.getId then return false end
+    local id = effect:getId()
+    return id >= 10000 and id <= 120005
+end
+
 local function onAttach(effect, owner)
+    if isPaperdollEffect(effect) then return end
     if not AttachedEffectManager then return end
     local category, thingId = AttachedEffectManager.getDataThing(owner)
     local effDef = AttachedEffectManager.get(effect:getId())
@@ -14,6 +21,7 @@ local function onAttach(effect, owner)
 end
 
 local function onDetach(effect, oldOwner)
+    if isPaperdollEffect(effect) then return end
     if not AttachedEffectManager then return end
     local category, thingId = AttachedEffectManager.getDataThing(oldOwner)
     local effDef = AttachedEffectManager.get(effect:getId())
@@ -31,7 +39,9 @@ local function onOutfitChange(creature, outfit, oldOutfit)
     local ok, list = pcall(function() return creature:getAttachedEffects() end)
     if not ok or type(list) ~= 'table' then return end
     for _i, effect in pairs(list) do
-        if effect and effect.getId then
+        if isPaperdollEffect(effect) then
+            -- skip paperdoll overlays to avoid overriding dynamic offsets
+        elseif effect and effect.getId then
             local effDef = AttachedEffectManager.get(effect:getId())
             if effDef then
                 local cfg = AttachedEffectManager.getConfig(effect:getId(), ThingCategoryCreature, outfit.type)
