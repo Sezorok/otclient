@@ -382,6 +382,31 @@ local function nudgeSlotDefault(slotName, dirKey, dx, dy)
   return v
 end
 
+local function nudgeSlotItem(slotName, itemId, dirKey, dx, dy)
+  loadOffsets()
+  OFFSETS[slotName] = OFFSETS[slotName] or {}
+  OFFSETS[slotName].items = OFFSETS[slotName].items or {}
+  local dk = normalizeDirKey(dirKey)
+  local key = tostring(itemId)
+  OFFSETS[slotName].items[key] = OFFSETS[slotName].items[key] or {}
+  local v = OFFSETS[slotName].items[key][dk] or { 0, 0, true }
+  v[1] = (v[1] or 0) + (dx or 0)
+  v[2] = (v[2] or 0) + (dy or 0)
+  OFFSETS[slotName].items[key][dk] = v
+  return v
+end
+
+local function printSlotItem(slotName, itemId)
+  loadOffsets()
+  local key = tostring(itemId)
+  local m = (OFFSETS[slotName] and OFFSETS[slotName].items and OFFSETS[slotName].items[key]) or {}
+  local function fmt(k)
+    local v = m[k] or {0,0,true}
+    return string.format("%s=(%d,%d,%s)", k, v[1] or 0, v[2] or 0, v[3] and 'true' or 'false')
+  end
+  print(string.format("%s item %d offsets: %s %s %s %s", slotName:gsub('^%l', string.upper), itemId, fmt('N'), fmt('E'), fmt('S'), fmt('W')))
+end
+
 local function printSlotDefault(slotName)
   loadOffsets()
   local m = (OFFSETS[slotName] and OFFSETS[slotName].default) or {}
@@ -461,6 +486,30 @@ function paperdoll_print_current_dir()
   local p = g_game.getLocalPlayer()
   local dir = p and (p.getDirection and p:getDirection() or South) or South
   print('current dir:', dir, 'key=', getCurrentDirKey())
+end
+
+-- Item-specific calibration helpers
+function paperdoll_nudge_body_item(dirKey, dx, dy)
+  local p = g_game.getLocalPlayer(); if not p then return end
+  local it = p:getInventoryItem(InventorySlotBody); if not it then return end
+  local v = nudgeSlotItem('body', it:getId(), dirKey, dx, dy)
+  saveOffsets(); updateManagerConfigFor(InventorySlotBody, it:getId()); applyOffsetsToActive(InventorySlotBody)
+  return v
+end
+
+function paperdoll_print_body_item_offsets()
+  local p = g_game.getLocalPlayer(); if not p then return end
+  local it = p:getInventoryItem(InventorySlotBody); if not it then return end
+  printSlotItem('body', it:getId())
+end
+
+function paperdoll_clear_body_item_offsets()
+  loadOffsets()
+  local p = g_game.getLocalPlayer(); if not p then return end
+  local it = p:getInventoryItem(InventorySlotBody); if not it then return end
+  local key = tostring(it:getId())
+  if OFFSETS.body and OFFSETS.body.items then OFFSETS.body.items[key] = nil end
+  saveOffsets(); updateManagerConfigFor(InventorySlotBody, it:getId()); applyOffsetsToActive(InventorySlotBody)
 end
 
 function controller:onGameStart()
