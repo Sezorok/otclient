@@ -544,6 +544,69 @@ function paperdoll_clear_body_item_offsets()
   saveOffsets(); updateManagerConfigFor(InventorySlotBody, it:getId()); applyOffsetsToActive(InventorySlotBody)
 end
 
+-- Head item-specific calibration helpers (symmetrical to body)
+function paperdoll_nudge_head_item(dirKey, dx, dy)
+  local p = g_game.getLocalPlayer(); if not p then return end
+  local it = p:getInventoryItem(InventorySlotHead); if not it then return end
+  local v = nudgeSlotItem('head', it:getId(), dirKey, dx, dy)
+  saveOffsets(); updateManagerConfigFor(InventorySlotHead, it:getId()); applyOffsetsToActive(InventorySlotHead)
+  return v
+end
+
+function paperdoll_print_head_item_offsets()
+  local p = g_game.getLocalPlayer(); if not p then return end
+  local it = p:getInventoryItem(InventorySlotHead); if not it then return end
+  printSlotItem('head', it:getId())
+end
+
+function paperdoll_clear_head_item_offsets()
+  loadOffsets()
+  local p = g_game.getLocalPlayer(); if not p then return end
+  local it = p:getInventoryItem(InventorySlotHead); if not it then return end
+  local key = tostring(it:getId())
+  if OFFSETS.head and OFFSETS.head.items then OFFSETS.head.items[key] = nil end
+  saveOffsets(); updateManagerConfigFor(InventorySlotHead, it:getId()); applyOffsetsToActive(InventorySlotHead)
+end
+
+-- Small exported helpers for UI integration
+function paperdoll_get_current_dir_key()
+  return getCurrentDirKey()
+end
+
+function paperdoll_save_offsets()
+  saveOffsets()
+end
+
+local function resolveSlotConstByName(slotName)
+  if slotName == 'head' then return InventorySlotHead end
+  if slotName == 'body' then return InventorySlotBody end
+  if slotName == 'back' then return InventorySlotBack end
+  if slotName == 'left' then return InventorySlotLeft end
+  if slotName == 'right' then return InventorySlotRight end
+  if slotName == 'legs' then return InventorySlotLeg end
+  if slotName == 'feet' then return InventorySlotFeet end
+  if slotName == 'neck' then return InventorySlotNeck end
+  if slotName == 'finger' then return InventorySlotFinger end
+  if slotName == 'ammo' then return InventorySlotAmmo end
+  if slotName == 'purse' then return InventorySlotPurse end
+  return nil
+end
+
+function paperdoll_refresh_slot(slotName)
+  local slot = resolveSlotConstByName(slotName)
+  if not slot then return end
+  applyOffsetsToActive(slot)
+end
+
+function paperdoll_get_active_item_id(slotName)
+  local slot = resolveSlotConstByName(slotName)
+  if not slot then return 0 end
+  local p = g_game.getLocalPlayer(); if not p then return 0 end
+  local it = p:getInventoryItem(slot); if not it then return 0 end
+  return it:getId()
+end
+
+
 function controller:onGameStart()
   self:registerEvents(LocalPlayer, {
     onInventoryChange = function(player, slot, item, oldItem)

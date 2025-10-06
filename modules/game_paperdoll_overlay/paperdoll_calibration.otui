@@ -1,0 +1,168 @@
+UIWindow
+  id: paperdollCalibrationWindow
+  text: Paperdoll Calibration
+  anchors.centerIn: parent
+  size: 380 240
+  visible: false
+
+  UIWidget
+    id: content
+    anchors.fill: parent
+    layout:
+      type: verticalBox
+      spacing: 6
+    padding: 6
+
+    UIWidget
+      id: topRow
+      layout:
+        type: horizontalBox
+        spacing: 6
+      height: 24
+
+      ComboBox
+        id: slotCombo
+        size: 120 20
+        @onOptionChange: modules.game_paperdoll_overlay.calibration.onSlotChange()
+
+      CheckBox
+        id: perItem
+        !text: tr("Per item")
+        @onCheckChange: modules.game_paperdoll_overlay.calibration.onPerItemToggle(self:isChecked())
+
+      Button
+        id: useCurrentDir
+        text: Use current dir
+        @onClick: modules.game_paperdoll_overlay.calibration.useCurrentDir()
+
+      Label
+        id: dirLabel
+        text: Direction: S
+        anchors.right: parent.right
+
+    UIWidget
+      id: dirRow
+      layout:
+        type: horizontalBox
+        spacing: 6
+      height: 24
+
+      Button
+        text: N
+        width: 32
+        @onClick: modules.game_paperdoll_overlay.calibration.setDir('N')
+
+      Button
+        text: E
+        width: 32
+        @onClick: modules.game_paperdoll_overlay.calibration.setDir('E')
+
+      Button
+        text: S
+        width: 32
+        @onClick: modules.game_paperdoll_overlay.calibration.setDir('S')
+
+      Button
+        text: W
+        width: 32
+        @onClick: modules.game_paperdoll_overlay.calibration.setDir('W')
+
+      UIWidget
+        size: 10 1
+        phantom: true
+
+      Label
+        text: Step:
+
+      SpinBox
+        id: step
+        width: 60
+        minimum: 1
+        maximum: 50
+        value: 1
+
+      Label
+        id: itemIdLabel
+        text: Item ID: 0
+        anchors.right: parent.right
+
+    UIWidget
+      id: arrowsRow
+      layout:
+        type: verticalBox
+        spacing: 4
+
+      UIWidget
+        layout:
+          type: horizontalBox
+          spacing: 6
+        height: 28
+
+        UIWidget
+          width: 40
+          phantom: true
+
+        Button
+          id: upBtn
+          text: 
+          !text: tr("▲")
+          width: 40
+          @onClick: modules.game_paperdoll_overlay.calibration.onArrow('up')
+
+      UIWidget
+        layout:
+          type: horizontalBox
+          spacing: 6
+        height: 28
+
+        Button
+          id: leftBtn
+          text: 
+          !text: tr("◀")
+          width: 40
+          @onClick: modules.game_paperdoll_overlay.calibration.onArrow('left')
+
+        UIWidget
+          width: 40
+          phantom: true
+
+        Button
+          id: rightBtn
+          text: 
+          !text: tr("▶")
+          width: 40
+          @onClick: modules.game_paperdoll_overlay.calibration.onArrow('right')
+
+      UIWidget
+        layout:
+          type: horizontalBox
+          spacing: 6
+        height: 28
+
+        UIWidget
+          width: 40
+          phantom: true
+
+        Button
+          id: downBtn
+          text: 
+          !text: tr("▼")
+          width: 40
+          @onClick: modules.game_paperdoll_overlay.calibration.onArrow('down')
+
+    UIWidget
+      id: actionsRow
+      layout:
+        type: horizontalBox
+        spacing: 6
+      height: 30
+
+      Button
+        id: saveBtn
+        text: Save
+        @onClick: modules.game_paperdoll_overlay.calibration.save()
+
+      Button
+        id: clearItemBtn
+        text: Clear Item Override
+        @onClick: modules.game_paperdoll_overlay.calibration.clearItem()
