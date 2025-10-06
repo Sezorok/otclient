@@ -45,7 +45,16 @@ local OFFSETS = nil
 local OFFSETS_PATH = "/settings/paperdoll_offsets.json"
 local DIR_ALIAS = { N = North, E = East, S = South, W = West }
 -- Ensure both enum constants and raw numeric directions resolve
-local DIR_TO_KEY = { [North] = 'N', [East] = 'E', [South] = 'S', [West] = 'W', [0]='N', [1]='E', [2]='S', [3]='W' }
+local DIR_TO_KEY = { [North] = 'N', [East] = 'E', [South] = 'S', [West] = 'W', [0]='N', [1]='E', [2]='S', [3]='W', [NorthEast]='E', [SouthEast]='E', [SouthWest]='W', [NorthWest]='W', [4]='E', [5]='E', [6]='W', [7]='W' }
+
+local function resolveDirIdxForEffect(dir)
+  local idx = DIR_INDEX[dir]
+  if idx ~= nil then return idx end
+  -- map diagonals to nearest cardinal (horizontal preference to reduce S fallback)
+  if dir == NorthEast or dir == SouthEast or dir == 4 or dir == 5 then return DIR_INDEX[East] end
+  if dir == SouthWest or dir == NorthWest or dir == 6 or dir == 7 then return DIR_INDEX[West] end
+  return DIR_INDEX[South] -- safe fallback
+end
 
 local function loadOffsets()
   if OFFSETS then return OFFSETS end
@@ -208,7 +217,11 @@ end
 local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRestart, effectDir)
   local wantedEffId = makeEffectId(slot, itemId, dirIdx)
   if not dirPaths[dirIdx] then
-    if dirPaths[2] then
+    -- remap diagonals or missing dirs to nearest horizontal first, then south as fallback
+    local mappedIdx = resolveDirIdxForEffect(INDEX_TO_DIR[dirIdx] or dirIdx)
+    if dirPaths[mappedIdx] then
+      wantedEffId = makeEffectId(slot, itemId, mappedIdx)
+    elseif dirPaths[2] then
       wantedEffId = makeEffectId(slot, itemId, 2)
     else
       for i = 0, 3 do if dirPaths[i] then wantedEffId = makeEffectId(slot, itemId, i); break end end
