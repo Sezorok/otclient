@@ -127,7 +127,8 @@ local function applyOffsetsToActive(slot)
   local itemId = item and item:getId() or 0
   applyOffsetsForAllDirs(eff, slot, itemId)
   local dir = p.getDirection and p:getDirection() or South
-  if eff.setDirection then eff:setDirection(dir) end
+  local dirResolved = INDEX_TO_DIR[resolveDirIdxForEffect(dir)] or South
+  if eff.setDirection then eff:setDirection(dirResolved) end
 end
 
 local function makeEffectId(slot, itemId, dirIdx)
@@ -454,8 +455,8 @@ function paperdoll_nudge_body(dirKey, dx, dy)
   -- force refresh current attachments to reflect live changes
   local p = g_game.getLocalPlayer()
   if p then
-    local dir = p.getDirection and p:getDirection() or South
-    local dirIdx = DIR_INDEX[dir] or 2
+  local dir = p.getDirection and p:getDirection() or South
+  local dirIdx = resolveDirIdxForEffect(dir)
     -- re-apply offsets directly to active effect to avoid manager resets
     applyOffsetsToActive(InventorySlotBody)
     local item = p:getInventoryItem(InventorySlotBody)
@@ -478,8 +479,8 @@ function paperdoll_nudge_head(dirKey, dx, dy)
   saveOffsets()
   local p = g_game.getLocalPlayer()
   if p then
-    local dir = p.getDirection and p:getDirection() or South
-    local dirIdx = DIR_INDEX[dir] or 2
+  local dir = p.getDirection and p:getDirection() or South
+  local dirIdx = resolveDirIdxForEffect(dir)
     applyOffsetsToActive(InventorySlotHead)
     local item = p:getInventoryItem(InventorySlotHead)
     if item then
@@ -584,7 +585,7 @@ function controller:onGameStart()
         if cid and invisByCreature[cid] then return end
         -- Use creature facing (cardinal), ignore diagonal params
         local dir = p.getDirection and p:getDirection() or South
-        local dirIdx = DIR_INDEX[dir] or 2
+        local dirIdx = resolveDirIdxForEffect(dir)
         -- keep overlays aligned without reattach to avoid flicker/jumps
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
@@ -597,7 +598,7 @@ function controller:onGameStart()
         local cid = p.getId and p:getId() or nil
         if cid and invisByCreature[cid] then return end
         local dir = p.getDirection and p:getDirection() or South
-        local dirIdx = DIR_INDEX[dir] or 2
+        local dirIdx = resolveDirIdxForEffect(dir)
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
@@ -616,7 +617,7 @@ function controller:onGameStart()
       -- Continuously apply latest offsets to all active overlays to reflect live tweaks
       for s, _ in pairs(state.current) do applyOffsetsToActive(s) end
       local dir = p.getDirection and p:getDirection() or South
-      local dirIdx = DIR_INDEX[dir] or 2
+      local dirIdx = resolveDirIdxForEffect(dir)
       if dirIdx ~= lastDirIdx then
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
