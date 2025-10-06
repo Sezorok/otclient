@@ -205,7 +205,7 @@ local function ensureEffects(slot, itemId, dirPaths)
   end
 end
 
-local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRestart)
+local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRestart, effectDir)
   local wantedEffId = makeEffectId(slot, itemId, dirIdx)
   if not dirPaths[dirIdx] then
     if dirPaths[2] then
@@ -221,7 +221,7 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRest
       -- Apply latest offsets at attach time so runtime changes take effect
       applyOffsetsForAllDirs(eff, slot, itemId)
       -- Ensure effect respects current facing direction for dir-specific offsets
-      local dirConst = INDEX_TO_DIR[dirIdx] or South
+      local dirConst = effectDir or (INDEX_TO_DIR[dirIdx] or South)
       if eff.setDirection then eff:setDirection(dirConst) end
       -- attach new first to avoid visual gap, then detach old if needed
       player:attachEffect(eff)
@@ -576,7 +576,7 @@ function controller:onGameStart()
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
-            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false)
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false, dir)
           end
         end
       end,
@@ -588,7 +588,7 @@ function controller:onGameStart()
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
-            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false)
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false, dir)
           end
         end
       end
