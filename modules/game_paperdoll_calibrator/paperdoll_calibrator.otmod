@@ -1,9 +1,10 @@
 Module
   name: game_paperdoll_calibrator
-  description: Developer tool to calibrate paperdoll offsets
+  description: Developer tool for paperdoll offset calibration
   author: You
   sandboxed: true
   reloadable: true
+  autoload: false
   scripts: [ paperdoll_calibrator ]
   @onLoad: init()
   @onUnload: terminate()
