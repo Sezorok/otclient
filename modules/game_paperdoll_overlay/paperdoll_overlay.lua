@@ -342,6 +342,8 @@ function init()
   -- Register developer button and hotkey non-intrusively once the game starts
   controller:registerEvents(g_game, {
     onGameStart = function()
+      -- Restrict calibrator to GM/God accounts only
+      if not (g_game.isGM and g_game.isGM()) then return end
       pcall(function()
         if modules and modules.game_mainpanel and modules.game_mainpanel.addToggleButton then
           local btn = modules.game_mainpanel.addToggleButton(
@@ -778,6 +780,11 @@ end
 local function openPaperdollCalibratorInternal()
   if not g_ui or not g_ui.getRootWidget then
     return print('Calibrator UI not available, using console helpers.')
+  end
+  -- Restrict calibrator to GM/God accounts only
+  if not (g_game.isGM and g_game.isGM()) then
+    print('Calibrator is restricted to GM accounts.')
+    return
   end
   local root = g_ui.getRootWidget()
   if modules.game_paperdoll_overlay._calibWnd and modules.game_paperdoll_overlay._calibWnd:isVisible() then
