@@ -41,6 +41,8 @@ local state = { current = {}, activeEffect = {} }
 local invisByCreature = {}
 -- Calibration config
 local USE_ITEM_OFFSETS = false -- default: slot-level calibration only
+local CALIBRATOR_FORCE_ALLOW = false -- developer override for permission gating
+local registeredManagerIds = {} -- track manager-registered effect ids to avoid noisy lookups
 
 -- Runtime-configurable offsets (persisted under /settings/paperdoll_offsets.json)
 local OFFSETS = nil
@@ -199,8 +201,10 @@ local function updateManagerConfigFor(slot, itemId)
   local map = getOffsetsFor(slot, itemId) or {}
   for i = 0, 3 do
     local effId = makeEffectId(slot, itemId, i)
-    local def = AttachedEffectManager.get(effId)
-    if def then
+    -- only attempt if this effId was registered in manager to avoid noisy getById errors
+    if registeredManagerIds[effId] then
+      local def = AttachedEffectManager.get(effId)
+      if def then
       def.config = def.config or {}
       def.config.onTop = true
       def.config.dirOffset = def.config.dirOffset or {}
@@ -209,6 +213,7 @@ local function updateManagerConfigFor(slot, itemId)
         if v then def.config.dirOffset[dirConst] = { v[1] or 0, v[2] or 0, v[3] and true or false } end
       end
       put(North,'N'); put(East,'E'); put(South,'S'); put(West,'W')
+      end
     end
   end
 end
@@ -221,6 +226,7 @@ local function ensureEffects(slot, itemId, dirPaths)
       -- Prefer manager if available; fallback to direct registration
       if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
         AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, itemId))
+        registeredManagerIds[effId] = true
       elseif not g_attachedEffects.getById(effId) then
         g_attachedEffects.registerByImage(effId, "paperdll", path, true)
         local eff = g_attachedEffects.getById(effId)
@@ -714,6 +720,10 @@ end
 
 -- Determine if current player is allowed to open the calibrator (GM/God)
 local function isCalibratorAllowed()
+  if CALIBRATOR_FORCE_ALLOW then
+    print('[Calibrator] override enabled: allowing access')
+    return true
+  end
   local p = g_game.getLocalPlayer and g_game.getLocalPlayer() or nil
   local isGm = (g_game.isGM and g_game.isGM()) or false
   local gmActions = (g_game.getGMActions and g_game.getGMActions()) or nil
