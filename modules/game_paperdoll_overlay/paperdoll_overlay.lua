@@ -724,8 +724,8 @@ local function isCalibratorAllowed()
   print(string.format('[Calibrator] perms: isGM=%s, GMActions=%s, group=%s, accountType=%s',
     isGm and 'true' or 'false', gmActionsHasAny and 'true' or 'false', tostring(groupId), tostring(accountType)))
   if isGm or gmActionsHasAny then return true end
-  if type(groupId) == 'number' and groupId >= 6 then return true end
-  if type(accountType) == 'number' and accountType >= 6 then return true end
+  if type(groupId) == 'number' and groupId >= 6 then return true end -- player type (god) = 6
+  if type(accountType) == 'number' and accountType >= 5 then return true end -- account type (god) = 5
   return false
 end
 
