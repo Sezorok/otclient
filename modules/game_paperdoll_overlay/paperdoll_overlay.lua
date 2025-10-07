@@ -342,8 +342,10 @@ function init()
   -- Register developer button and hotkey non-intrusively once the game starts
   controller:registerEvents(g_game, {
     onGameStart = function()
-      -- Restrict calibrator to GM/God accounts only
-      if not (g_game.isGM and g_game.isGM()) then return end
+      -- Restrict calibrator to GM/God accounts only and log status
+      local isGm = (g_game.isGM and g_game.isGM()) or false
+      print(string.format('[Calibrator] god status check: %s', isGm and 'true' or 'false'))
+      if not isGm then return end
       pcall(function()
         if modules and modules.game_mainpanel and modules.game_mainpanel.addToggleButton then
           local btn = modules.game_mainpanel.addToggleButton(
@@ -782,8 +784,10 @@ local function openPaperdollCalibratorInternal()
     return print('Calibrator UI not available, using console helpers.')
   end
   -- Restrict calibrator to GM/God accounts only
-  if not (g_game.isGM and g_game.isGM()) then
-    print('Calibrator is restricted to GM accounts.')
+  local isGm = (g_game.isGM and g_game.isGM()) or false
+  print(string.format('[Calibrator] god status check: %s', isGm and 'true' or 'false'))
+  if not isGm then
+    print('[Calibrator] access denied: Calibrator is restricted to GM accounts.')
     return
   end
   local root = g_ui.getRootWidget()
@@ -793,6 +797,9 @@ local function openPaperdollCalibratorInternal()
   local wnd = (g_ui.displayUI and g_ui.displayUI('paperdoll_calibrator')) or nil
   if not wnd then
     wnd = g_ui.loadUI('/game_paperdoll_overlay/paperdoll_calibrator', root) or g_ui.loadUI('paperdoll_calibrator', root)
+  end
+  if not wnd then
+    print('[Calibrator] failed to load UI window (paperdoll_calibrator).')
   end
   if wnd and wnd.show then
     wnd:show(); wnd:raise(); wnd:focus()
