@@ -6,5 +6,5 @@ Module
   reloadable: true
   autoload: true
   scripts: [ paperdoll_calibrator ]
-  @onLoad: init()
-  @onUnload: terminate()
+  @onLoad: calibrator_onLoad()
+  @onUnload: calibrator_onUnload()

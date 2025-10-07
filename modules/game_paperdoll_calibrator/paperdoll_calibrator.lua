@@ -157,3 +157,7 @@ M.init = moduleInit
 M.terminate = moduleTerminate
 function init() return moduleInit() end
 function terminate() return moduleTerminate() end
+
+-- wrappers for .otmod hooks to avoid name collisions
+function calibrator_onLoad() return moduleInit() end
+function calibrator_onUnload() return moduleTerminate() end
