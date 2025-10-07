@@ -9,6 +9,15 @@ Services = {
     --createAccount = "http://localhost/clientcreateaccount.php", --./client_entergame -- createAccount.lua
 }
 
+-- Default servers list for automatic connection
+Servers_init = {
+    ["http://127.0.0.1/myaac-1.8/login.php"] = {
+        ["port"] = 80,
+        ["protocol"] = 1412,
+        ["httpLogin"] = true
+    }
+}
+
 --[[
 Servers_init = {
     ["http://127.0.0.1/login.php"] = {
