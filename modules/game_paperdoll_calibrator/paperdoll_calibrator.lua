@@ -142,6 +142,32 @@ function M.onResetSlot()
   if paperdoll_save_offsets then paperdoll_save_offsets() end
 end
 
+function M.onSlotPrev()
+  local w = M._wnd; if not w then return end
+  w._slotIndex = math.max(1, (w._slotIndex or 4) - 1)
+  local slotValue = w:recursiveGetChildById('slotValue') or w:getChildById('slotValue')
+  if slotValue then slotValue:setText(ALL_SLOTS[w._slotIndex]) end
+  local idLbl = w:recursiveGetChildById('itemIdLabel') or w:getChildById('itemIdLabel')
+  if idLbl and paperdoll_get_active_item_id then idLbl:setText(string.format('Item: %d', paperdoll_get_active_item_id(ALL_SLOTS[w._slotIndex]))) end
+end
+
+function M.onSlotNext()
+  local w = M._wnd; if not w then return end
+  w._slotIndex = math.min(#ALL_SLOTS, (w._slotIndex or 4) + 1)
+  local slotValue = w:recursiveGetChildById('slotValue') or w:getChildById('slotValue')
+  if slotValue then slotValue:setText(ALL_SLOTS[w._slotIndex]) end
+  local idLbl = w:recursiveGetChildById('itemIdLabel') or w:getChildById('itemIdLabel')
+  if idLbl and paperdoll_get_active_item_id then idLbl:setText(string.format('Item: %d', paperdoll_get_active_item_id(ALL_SLOTS[w._slotIndex]))) end
+end
+
+function M.onExport()
+  local w = M._wnd; if not w then return end
+  local slot = ALL_SLOTS[w._slotIndex or 4]
+  if slot == 'body' and paperdoll_print_body_offsets then return paperdoll_print_body_offsets() end
+  if slot == 'head' and paperdoll_print_head_offsets then return paperdoll_print_head_offsets() end
+  print(string.format('[Calibrator] No export function for slot=%s', tostring(slot)))
+end
+
 -- namespace exports for OTUI
 M.onCalibratorSetup = M.onCalibratorSetup
 M.onAdjustClick = M.onAdjustClick
