@@ -342,10 +342,9 @@ function init()
   -- Register developer button and hotkey non-intrusively once the game starts
   controller:registerEvents(g_game, {
     onGameStart = function()
-      -- Restrict calibrator to GM/God accounts only and log status
+      -- Log GM status; button shown to all, access checked on open
       local isGm = (g_game.isGM and g_game.isGM()) or false
       print(string.format('[Calibrator] god status check: %s', isGm and 'true' or 'false'))
-      if not isGm then return end
       pcall(function()
         if modules and modules.game_mainpanel and modules.game_mainpanel.addToggleButton then
           local btn = modules.game_mainpanel.addToggleButton(
