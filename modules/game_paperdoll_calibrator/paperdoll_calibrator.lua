@@ -36,7 +36,8 @@ local function nudgeSlotDefault(slotName, dirKey, dx, dy)
   end
 end
 
-function M.init()
+-- internal lifecycle (use locals to avoid reload recursion)
+local function moduleInit()
   -- optional TopMenu button (only show to GM if available)
   if modules and modules.game_mainpanel and modules.game_mainpanel.addToggleButton then
     pcall(function()
@@ -51,7 +52,7 @@ function M.init()
   end
 end
 
-function M.terminate()
+local function moduleTerminate()
   if M._wnd then M._wnd:destroy(); M._wnd = nil end
 end
 
@@ -152,5 +153,7 @@ M.onClearItem = M.onClearItem
 M.onResetSlot = M.onResetSlot
 
 -- module lifecycle
-function init() M.init() end
-function terminate() M.terminate() end
+M.init = moduleInit
+M.terminate = moduleTerminate
+function init() return moduleInit() end
+function terminate() return moduleTerminate() end
