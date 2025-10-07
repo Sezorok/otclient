@@ -316,6 +316,10 @@ end
 -- Module lifecycle wrappers to match .otmod hooks
 function init()
   controller:init()
+  -- Ensure attached effects module is available (manager or fallback)
+  if g_modules and g_modules.ensureModuleLoaded then
+    pcall(function() g_modules.ensureModuleLoaded('game_attachedeffects') end)
+  end
   -- ensure manager module is available for effect configs
   if g_modules and g_modules.ensureModuleLoaded then
     g_modules.ensureModuleLoaded('game_attachedeffects')
