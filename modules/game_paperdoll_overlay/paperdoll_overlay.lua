@@ -39,10 +39,6 @@ end
 local state = { current = {}, activeEffect = {} }
 -- must be defined before functions to be captured as upvalue
 local invisByCreature = {}
--- Calibration config
-local USE_ITEM_OFFSETS = false -- default: slot-level calibration only
-local CALIBRATOR_FORCE_ALLOW = false -- developer override for permission gating
-local registeredManagerIds = {} -- track manager-registered effect ids to avoid noisy lookups
 
 -- Runtime-configurable offsets (persisted under /settings/paperdoll_offsets.json)
 local OFFSETS = nil
@@ -89,26 +85,10 @@ local function getOffsetsFor(slot, itemId)
   local slotName = getSlotName(slot)
   local conf = loadOffsets()[slotName]
   if not conf then return nil end
-  if USE_ITEM_OFFSETS and itemId and conf.items and conf.items[tostring(itemId)] then
+  if itemId and conf.items and conf.items[tostring(itemId)] then
     return conf.items[tostring(itemId)], true
   end
   return conf.default, false
-end
-
--- Resolve slot name to InventorySlot id
-local function resolveSlotId(slotName)
-  if slotName == 'head' then return InventorySlotHead end
-  if slotName == 'neck' then return InventorySlotNeck end
-  if slotName == 'back' then return InventorySlotBack end
-  if slotName == 'body' then return InventorySlotBody end
-  if slotName == 'right' then return InventorySlotRight end
-  if slotName == 'left' then return InventorySlotLeft end
-  if slotName == 'legs' then return InventorySlotLeg end
-  if slotName == 'feet' then return InventorySlotFeet end
-  if slotName == 'finger' then return InventorySlotFinger end
-  if slotName == 'ammo' then return InventorySlotAmmo end
-  if slotName == 'purse' then return InventorySlotPurse end
-  return nil
 end
 
 local function applyOffsetsForAllDirs(eff, slot, itemId)
@@ -201,10 +181,8 @@ local function updateManagerConfigFor(slot, itemId)
   local map = getOffsetsFor(slot, itemId) or {}
   for i = 0, 3 do
     local effId = makeEffectId(slot, itemId, i)
-    -- only attempt if this effId was registered in manager to avoid noisy getById errors
-    if registeredManagerIds[effId] then
-      local def = AttachedEffectManager.get(effId)
-      if def then
+    local def = AttachedEffectManager.get(effId)
+    if def then
       def.config = def.config or {}
       def.config.onTop = true
       def.config.dirOffset = def.config.dirOffset or {}
@@ -213,7 +191,6 @@ local function updateManagerConfigFor(slot, itemId)
         if v then def.config.dirOffset[dirConst] = { v[1] or 0, v[2] or 0, v[3] and true or false } end
       end
       put(North,'N'); put(East,'E'); put(South,'S'); put(West,'W')
-      end
     end
   end
 end
@@ -226,7 +203,6 @@ local function ensureEffects(slot, itemId, dirPaths)
       -- Prefer manager if available; fallback to direct registration
       if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
         AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, itemId))
-        registeredManagerIds[effId] = true
       elseif not g_attachedEffects.getById(effId) then
         g_attachedEffects.registerByImage(effId, "paperdll", path, true)
         local eff = g_attachedEffects.getById(effId)
@@ -344,36 +320,6 @@ function init()
   if g_modules and g_modules.ensureModuleLoaded then
     g_modules.ensureModuleLoaded('game_attachedeffects')
   end
-
-  -- Register developer button and hotkey non-intrusively once the game starts
-  controller:registerEvents(g_game, {
-    onGameStart = function()
-      -- Log GM/God status; button shown to all, access checked on open
-      print(string.format('[Calibrator] god status check: %s', isCalibratorAllowed() and 'true' or 'false'))
-      pcall(function()
-        if modules and modules.game_mainpanel and modules.game_mainpanel.addToggleButton then
-          local btn = modules.game_mainpanel.addToggleButton(
-            'paperdollCalibrationButton',
-            tr('Paperdoll Offsets'),
-            '/images/options/hotkeys',
-            function()
-              if modules and modules.game_paperdoll_overlay and modules.game_paperdoll_overlay.openPaperdollCalibrator then
-                modules.game_paperdoll_overlay.openPaperdollCalibrator()
-              end
-            end,
-            false,
-            1000
-          )
-          if btn and btn.setOn then btn:setOn(false) end
-        end
-      end)
-      pcall(function()
-        if g_keyboard and g_keyboard.bindKeyDown then
-          g_keyboard.bindKeyDown('Ctrl+Shift+D', function() openPaperdollCalibrator() end)
-        end
-      end)
-    end
-  }):execute()
 
   -- Pre-register available paperdoll textures to avoid on-demand errors
   local slotDirs = { "head", "body", "back", "left", "right", "legs", "feet", "neck", "finger", "ammo", "purse" }
@@ -709,310 +655,3 @@ end
 function terminate()
   controller:terminate()
 end
-
--- --- Calibrator UI and helpers -------------------------------------------------
-
--- Expose minimal API for UI integration and console
-local function setUseItemOffsets(enabled)
-  USE_ITEM_OFFSETS = not not enabled
-  saveOffsets()
-end
-
--- Determine if current player is allowed to open the calibrator (GM/God)
-local function isCalibratorAllowed()
-  if CALIBRATOR_FORCE_ALLOW then
-    print('[Calibrator] override enabled: allowing access')
-    return true
-  end
-  local p = g_game.getLocalPlayer and g_game.getLocalPlayer() or nil
-  local isGm = (g_game.isGM and g_game.isGM()) or false
-  local gmActions = (g_game.getGMActions and g_game.getGMActions()) or nil
-  local gmActionsHasAny = false
-  if type(gmActions) == 'table' then for _ in pairs(gmActions) do gmActionsHasAny = true; break end end
-  local groupId = p and p.getGroup and p:getGroup() or nil
-  local accountType = p and p.getAccountType and p:getAccountType() or nil
-  print(string.format('[Calibrator] perms: isGM=%s, GMActions=%s, group=%s, accountType=%s',
-    isGm and 'true' or 'false', gmActionsHasAny and 'true' or 'false', tostring(groupId), tostring(accountType)))
-  if isGm or gmActionsHasAny then return true end
-  if type(groupId) == 'number' and groupId >= 6 then return true end -- player type (god) = 6
-  if type(accountType) == 'number' and accountType >= 5 then return true end -- account type (god) = 5
-  return false
-end
-
-local function getCurrentDirKey()
-  local p = g_game.getLocalPlayer()
-  local dir = p and (p.getDirection and p:getDirection() or South) or South
-  return DIR_TO_KEY[dir] or 'S'
-end
-
-function paperdoll_get_current_dir_key()
-  return getCurrentDirKey()
-end
-
-function paperdoll_get_active_item_id(slotName)
-  local slot = resolveSlotId and resolveSlotId(slotName) or nil
-  if not slot then return 0 end
-  local p = g_game.getLocalPlayer(); if not p then return 0 end
-  local it = p:getInventoryItem(slot); if not it then return 0 end
-  return it:getId()
-end
-
-function paperdoll_save_offsets()
-  saveOffsets()
-end
-
-function paperdoll_nudge_item(slotName, dirKey, dx, dy)
-  local slot = resolveSlotId and resolveSlotId(slotName) or nil
-  if not slot then return nil end
-  local p = g_game.getLocalPlayer(); if not p then return nil end
-  local it = p:getInventoryItem(slot); if not it then return nil end
-  local key = tostring(it:getId())
-  loadOffsets()
-  OFFSETS[slotName] = OFFSETS[slotName] or {}
-  OFFSETS[slotName].items = OFFSETS[slotName].items or {}
-  local dk = (function(k) if type(k) ~= 'string' or #k == 0 then return 'S' end local c=k:sub(1,1):upper(); if c=='N' or c=='E' or c=='S' or c=='W' then return c end return 'S' end)(dirKey)
-  local m = OFFSETS[slotName].items
-  local v = (m[key] and m[key][dk]) or {0,0,true}
-  v[1] = (v[1] or 0) - (dx or 0)
-  v[2] = (v[2] or 0) - (dy or 0)
-  m[key] = m[key] or {}; m[key][dk] = v
-  saveOffsets(); updateManagerConfigFor(slot, it:getId()); applyOffsetsToActive(slot)
-  return v
-end
-
-function paperdoll_clear_item_offsets(slotName)
-  loadOffsets()
-  local slot = resolveSlotId and resolveSlotId(slotName) or nil
-  if not slot then return end
-  local p = g_game.getLocalPlayer(); if not p then return end
-  local it = p:getInventoryItem(slot); if not it then return end
-  local key = tostring(it:getId())
-  OFFSETS[slotName] = OFFSETS[slotName] or {}
-  OFFSETS[slotName].items = OFFSETS[slotName].items or {}
-  OFFSETS[slotName].items[key] = nil
-  saveOffsets(); updateManagerConfigFor(slot, it:getId()); applyOffsetsToActive(slot)
-end
-
--- Defaults for Reset Slot
-local function makeDefaultForSlot(slotName)
-  if slotName == 'head' then
-    return { N={31,37,true}, E={32,33,true}, S={33,32,true}, W={35,30,true} }
-  elseif slotName == 'body' then
-    return { N={32,34,true}, E={33,33,true}, S={33,34,true}, W={34,31,true} }
-  end
-  return { N={0,0,true}, E={0,0,true}, S={0,0,true}, W={0,0,true} }
-end
-
--- Window loader
-local function openPaperdollCalibratorInternal()
-  if not g_ui or not g_ui.getRootWidget then
-    return print('Calibrator UI not available, using console helpers.')
-  end
-  -- Restrict calibrator to GM/God accounts only
-  local allowed = isCalibratorAllowed()
-  print(string.format('[Calibrator] god status check: %s', allowed and 'true' or 'false'))
-  if not allowed then
-    print('[Calibrator] access denied: Calibrator is restricted to GM accounts.')
-    return
-  end
-  local root = g_ui.getRootWidget()
-  if modules.game_paperdoll_overlay._calibWnd and modules.game_paperdoll_overlay._calibWnd:isVisible() then
-    modules.game_paperdoll_overlay._calibWnd:raise(); modules.game_paperdoll_overlay._calibWnd:focus(); return
-  end
-  local wnd = (g_ui.displayUI and g_ui.displayUI('paperdoll_calibrator')) or nil
-  if not wnd then
-    wnd = g_ui.loadUI('/game_paperdoll_overlay/paperdoll_calibrator', root) or g_ui.loadUI('paperdoll_calibrator', root)
-  end
-  if not wnd then
-    print('[Calibrator] failed to load UI window (paperdoll_calibrator).')
-  end
-  if wnd and wnd.show then
-    wnd:show(); wnd:raise(); wnd:focus()
-    pcall(function()
-      local setup = (modules and modules.game_paperdoll_overlay and modules.game_paperdoll_overlay.onCalibratorSetup) or onCalibratorSetup
-      if setup then setup(wnd) end
-    end)
-  end
-  modules.game_paperdoll_overlay._calibWnd = wnd
-end
-
-modules.game_paperdoll_overlay = modules.game_paperdoll_overlay or {}
-modules.game_paperdoll_overlay.openPaperdollCalibrator = openPaperdollCalibratorInternal
-
-function openPaperdollCalibrator()
-  return openPaperdollCalibratorInternal()
-end
-
--- UI controller
-function controller:onCalibratorSetup(w)
-  w._slotIndex = 4 -- default 'body'
-  local ALL_SLOTS = { 'head','neck','back','body','right','left','legs','feet','finger','ammo','purse' }
-  w._allSlots = ALL_SLOTS
-  local slotValue = w:recursiveGetChildById('slotValue') or w:getChildById('slotValue')
-  if slotValue then slotValue:setText(ALL_SLOTS[w._slotIndex]) end
-  local perItem = w.recursiveGetChildById and w:recursiveGetChildById('perItemCheck') or w:getChildById('perItemCheck')
-  if perItem then perItem:setChecked(USE_ITEM_OFFSETS) end
-  -- show current item id if available
-  local idLbl = w:recursiveGetChildById('itemIdLabel') or w:getChildById('itemIdLabel')
-  if idLbl and paperdoll_get_active_item_id then
-    idLbl:setText(string.format('Item: %d', paperdoll_get_active_item_id(ALL_SLOTS[w._slotIndex] or 'body')))
-  end
-  -- enable/disable arrows depending on PNG availability for current slot
-  local function updateArrowsEnabled()
-    local slot = ALL_SLOTS[w._slotIndex or 4]
-    local slotId = resolveSlotId(slot)
-    local has = false
-    local p = g_game.getLocalPlayer()
-    if p and slotId then
-      local it = p:getInventoryItem(slotId)
-      if it then
-        local paths = findDirectionalPNGs(slotId, it:getId())
-        has = next(paths) ~= nil
-      end
-    end
-    for _, bid in ipairs({ 'btnLeft','btnRight','btnUp','btnDown' }) do
-      local b = w:recursiveGetChildById(bid) or w:getChildById(bid)
-      if b and b.setEnabled then b:setEnabled(has) end
-    end
-  end
-  updateArrowsEnabled(); w._updateArrowsEnabled = updateArrowsEnabled
-  -- set and auto-update current facing direction label
-  local dirLabel = w:recursiveGetChildById('dirVal') or w:getChildById('dirVal')
-  if dirLabel then dirLabel:setText(paperdoll_get_current_dir_key and paperdoll_get_current_dir_key() or 'S') end
-  controller:cycleEvent(function()
-    if not modules.game_paperdoll_overlay._calibWnd or modules.game_paperdoll_overlay._calibWnd:isDestroyed() then return end
-    if not modules.game_paperdoll_overlay._calibWnd:isVisible() then return end
-    local lbl = w:recursiveGetChildById('dirVal') or w:getChildById('dirVal')
-    if lbl then lbl:setText(paperdoll_get_current_dir_key and paperdoll_get_current_dir_key() or 'S') end
-  end, 200, 'paperdoll_calib_dir')
-end
-
-local function getSelectedForUI(w)
-  local ALL_SLOTS = w._allSlots or { 'head','neck','back','body','right','left','legs','feet','finger','ammo','purse' }
-  local slot = ALL_SLOTS[w._slotIndex or 4]
-  local stepWidget = (w.recursiveGetChildById and w:recursiveGetChildById('stepSpin')) or w:getChildById('stepSpin')
-  local step = (stepWidget and (stepWidget.getValue and stepWidget:getValue() or tonumber(stepWidget:getText()))) or 1
-  local dirKey = paperdoll_get_current_dir_key and paperdoll_get_current_dir_key() or 'S'
-  return slot, dirKey, step
-end
-
-function controller:onAdjustClick(axis, sign)
-  local w = modules.game_paperdoll_overlay._calibWnd; if not w then return end
-  local slot, dir, step = getSelectedForUI(w)
-  local dx, dy = 0, 0
-  if axis == 'x' then dx = sign * step else dy = sign * step end
-  local v
-  if USE_ITEM_OFFSETS and paperdoll_get_active_item_id and paperdoll_get_active_item_id(slot) ~= 0 then
-    v = paperdoll_nudge_item(slot, dir, dx, dy)
-  else
-    -- call internal nudge (slot-level)
-    v = (function()
-      loadOffsets();
-      local dk = (function(k) if type(k) ~= 'string' or #k == 0 then return 'S' end local c=k:sub(1,1):upper(); if c=='N' or c=='E' or c=='S' or c=='W' then return c end return 'S' end)(dir)
-      OFFSETS[slot] = OFFSETS[slot] or {}
-      OFFSETS[slot].default = OFFSETS[slot].default or {}
-      local vv = OFFSETS[slot].default[dk] or {0,0,true}
-      vv[1] = (vv[1] or 0) - (dx or 0)
-      vv[2] = (vv[2] or 0) - (dy or 0)
-      OFFSETS[slot].default[dk] = vv
-      saveOffsets()
-      local p = g_game.getLocalPlayer(); if not p then return vv end
-      local slotId = resolveSlotId(slot); if not slotId then return vv end
-      local it = p:getInventoryItem(slotId)
-      if it then updateManagerConfigFor(slotId, it:getId()); applyOffsetsToActive(slotId) end
-      return vv
-    end)()
-  end
-  local vx = (type(v) == 'table' and v[1]) or 0
-  local vy = (type(v) == 'table' and v[2]) or 0
-  local offLbl = w:recursiveGetChildById('offsetValue') or w:getChildById('offsetValue')
-  if offLbl and offLbl.setText then offLbl:setText(string.format('(%d,%d,true)', vx, vy)) end
-  local idLbl = w:recursiveGetChildById('itemIdLabel') or w:getChildById('itemIdLabel')
-  if idLbl and paperdoll_get_active_item_id then idLbl:setText(string.format('Item: %d', paperdoll_get_active_item_id(slot))) end
-end
-
-function controller:onPerItemToggle(widget, checked)
-  setUseItemOffsets(checked)
-end
-
-function controller:onCloseCalibrator()
-  if modules.game_paperdoll_overlay._calibWnd then modules.game_paperdoll_overlay._calibWnd:destroy(); modules.game_paperdoll_overlay._calibWnd = nil end
-end
-
-function controller:onUseCurrentDir()
-  local w = modules.game_paperdoll_overlay._calibWnd; if not w then return end
-  local dirLabel = w:recursiveGetChildById('dirVal') or w:getChildById('dirVal')
-  if dirLabel then dirLabel:setText(paperdoll_get_current_dir_key and paperdoll_get_current_dir_key() or 'S') end
-end
-
-function controller:onSaveOffsets()
-  saveOffsets()
-end
-
-function controller:onClearItem()
-  local w = modules.game_paperdoll_overlay._calibWnd; if not w then return end
-  local slot, _, _ = getSelectedForUI(w)
-  if paperdoll_clear_item_offsets then paperdoll_clear_item_offsets(slot) end
-  local idLbl = w:recursiveGetChildById('itemIdLabel') or w:getChildById('itemIdLabel')
-  if idLbl and paperdoll_get_active_item_id then idLbl:setText(string.format('Item: %d', paperdoll_get_active_item_id(slot))) end
-end
-
-function controller:onResetSlot()
-  local w = modules.game_paperdoll_overlay._calibWnd; if not w then return end
-  local slot, _, _ = getSelectedForUI(w)
-  loadOffsets()
-  OFFSETS[slot] = OFFSETS[slot] or {}
-  OFFSETS[slot].default = makeDefaultForSlot(slot)
-  saveOffsets()
-  local p = g_game.getLocalPlayer(); if not p then return end
-  local slotId = resolveSlotId(slot); if not slotId then return end
-  local it = p:getInventoryItem(slotId)
-  if it then updateManagerConfigFor(slotId, it:getId()); applyOffsetsToActive(slotId) end
-end
-
-function controller:onExport()
-  local w = modules.game_paperdoll_overlay._calibWnd; if not w then return end
-  local slot, _, _ = getSelectedForUI(w)
-  loadOffsets()
-  local data = OFFSETS[slot] or {}
-  local function fmt(k)
-    local v = (data.default and data.default[k]) or {0,0,true}
-    return string.format('%s=(%d,%d,%s)', k, v[1] or 0, v[2] or 0, (v[3] and 'true' or 'false'))
-  end
-  print(string.format('[Calibrator] %s defaults: %s %s %s %s', slot:gsub('^%l', string.upper), fmt('N'), fmt('E'), fmt('S'), fmt('W')))
-end
-
-function controller:onSlotPrev()
-  local w = modules.game_paperdoll_overlay._calibWnd; if not w then return end
-  w._slotIndex = math.max(1, (w._slotIndex or 4) - 1)
-  local ALL_SLOTS = w._allSlots or { 'head','neck','back','body','right','left','legs','feet','finger','ammo','purse' }
-  local slotValue = w:recursiveGetChildById('slotValue') or w:getChildById('slotValue')
-  if slotValue then slotValue:setText(ALL_SLOTS[w._slotIndex]) end
-  local idLbl = w:recursiveGetChildById('itemIdLabel') or w:getChildById('itemIdLabel')
-  if idLbl and paperdoll_get_active_item_id then idLbl:setText(string.format('Item: %d', paperdoll_get_active_item_id(ALL_SLOTS[w._slotIndex]))) end
-  if w._updateArrowsEnabled then w._updateArrowsEnabled() end
-end
-
-function controller:onSlotNext()
-  local w = modules.game_paperdoll_overlay._calibWnd; if not w then return end
-  w._slotIndex = math.min(#(w._allSlots or { 'head','neck','back','body','right','left','legs','feet','finger','ammo','purse' }), (w._slotIndex or 4) + 1)
-  local ALL_SLOTS = w._allSlots or { 'head','neck','back','body','right','left','legs','feet','finger','ammo','purse' }
-  local slotValue = w:recursiveGetChildById('slotValue') or w:getChildById('slotValue')
-  if slotValue then slotValue:setText(ALL_SLOTS[w._slotIndex]) end
-  local idLbl = w:recursiveGetChildById('itemIdLabel') or w:getChildById('itemIdLabel')
-  if idLbl and paperdoll_get_active_item_id then idLbl:setText(string.format('Item: %d', paperdoll_get_active_item_id(ALL_SLOTS[w._slotIndex]))) end
-  if w._updateArrowsEnabled then w._updateArrowsEnabled() end
-end
-
--- Export UI callbacks under module namespace for OTUI
-modules.game_paperdoll_overlay.onCalibratorSetup = function(w) controller:onCalibratorSetup(w) end
-modules.game_paperdoll_overlay.onAdjustClick = function(axis, sign) controller:onAdjustClick(axis, sign) end
-modules.game_paperdoll_overlay.onPerItemToggle = function(widget, checked) controller:onPerItemToggle(widget, checked) end
-modules.game_paperdoll_overlay.onCloseCalibrator = function() controller:onCloseCalibrator() end
-modules.game_paperdoll_overlay.onUseCurrentDir = function() controller:onUseCurrentDir() end
-modules.game_paperdoll_overlay.onSaveOffsets = function() controller:onSaveOffsets() end
-modules.game_paperdoll_overlay.onClearItem = function() controller:onClearItem() end
-modules.game_paperdoll_overlay.onResetSlot = function() controller:onResetSlot() end
-modules.game_paperdoll_overlay.onExport = function() controller:onExport() end
-modules.game_paperdoll_overlay.onSlotPrev = function() controller:onSlotPrev() end
-modules.game_paperdoll_overlay.onSlotNext = function() controller:onSlotNext() end
