@@ -342,9 +342,8 @@ function init()
   -- Register developer button and hotkey non-intrusively once the game starts
   controller:registerEvents(g_game, {
     onGameStart = function()
-      -- Log GM status; button shown to all, access checked on open
-      local isGm = (g_game.isGM and g_game.isGM()) or false
-      print(string.format('[Calibrator] god status check: %s', isGm and 'true' or 'false'))
+      -- Log GM/God status; button shown to all, access checked on open
+      print(string.format('[Calibrator] god status check: %s', isCalibratorAllowed() and 'true' or 'false'))
       pcall(function()
         if modules and modules.game_mainpanel and modules.game_mainpanel.addToggleButton then
           local btn = modules.game_mainpanel.addToggleButton(
@@ -713,6 +712,23 @@ local function setUseItemOffsets(enabled)
   saveOffsets()
 end
 
+-- Determine if current player is allowed to open the calibrator (GM/God)
+local function isCalibratorAllowed()
+  local p = g_game.getLocalPlayer and g_game.getLocalPlayer() or nil
+  local isGm = (g_game.isGM and g_game.isGM()) or false
+  local gmActions = (g_game.getGMActions and g_game.getGMActions()) or nil
+  local gmActionsHasAny = false
+  if type(gmActions) == 'table' then for _ in pairs(gmActions) do gmActionsHasAny = true; break end end
+  local groupId = p and p.getGroup and p:getGroup() or nil
+  local accountType = p and p.getAccountType and p:getAccountType() or nil
+  print(string.format('[Calibrator] perms: isGM=%s, GMActions=%s, group=%s, accountType=%s',
+    isGm and 'true' or 'false', gmActionsHasAny and 'true' or 'false', tostring(groupId), tostring(accountType)))
+  if isGm or gmActionsHasAny then return true end
+  if type(groupId) == 'number' and groupId >= 6 then return true end
+  if type(accountType) == 'number' and accountType >= 6 then return true end
+  return false
+end
+
 local function getCurrentDirKey()
   local p = g_game.getLocalPlayer()
   local dir = p and (p.getDirection and p:getDirection() or South) or South
@@ -783,9 +799,9 @@ local function openPaperdollCalibratorInternal()
     return print('Calibrator UI not available, using console helpers.')
   end
   -- Restrict calibrator to GM/God accounts only
-  local isGm = (g_game.isGM and g_game.isGM()) or false
-  print(string.format('[Calibrator] god status check: %s', isGm and 'true' or 'false'))
-  if not isGm then
+  local allowed = isCalibratorAllowed()
+  print(string.format('[Calibrator] god status check: %s', allowed and 'true' or 'false'))
+  if not allowed then
     print('[Calibrator] access denied: Calibrator is restricted to GM accounts.')
     return
   end
