@@ -131,8 +131,10 @@ local function applyOffsetsToActive(slot)
   if eff.setDirection then eff:setDirection(dirResolved) end
 end
 
-local function makeEffectId(slot, itemId, dirIdx)
-  return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0)
+local function makeEffectId(slot, itemId, dirIdx, frameIdx)
+  -- Reserve thousands for frame indexing to keep within slot range window
+  local framePart = (frameIdx or 0) * 1000
+  return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0) + framePart
 end
 
 local BASE_DIRS = { "/images/paperdll/", "/images/paperdoll/" } -- support both spellings
@@ -144,8 +146,28 @@ local function findDirectionalPNGs(slot, itemId)
   for _, baseDir in ipairs(BASE_DIRS) do
     local any = false
     for i = 0, 3 do
-      local path = string.format("%s%s/%d_%d.png", baseDir, dirName, itemId, i)
-      if g_resources.fileExists(path) then map[i] = path; any = true end
+      -- Prefer multi-frame: id_dir_frame.png (e.g., 10387_0_0.png)
+      local frames = {}
+      local frameIdx = 0
+      while true do
+        local multiPath = string.format("%s%s/%d_%d_%d.png", baseDir, dirName, itemId, i, frameIdx)
+        if g_resources.fileExists(multiPath) then
+          table.insert(frames, multiPath)
+          any = true
+          frameIdx = frameIdx + 1
+        else
+          break
+        end
+      end
+      if #frames > 0 then
+        map[i] = frames
+      else
+        local singlePath = string.format("%s%s/%d_%d.png", baseDir, dirName, itemId, i)
+        if g_resources.fileExists(singlePath) then
+          map[i] = { singlePath }
+          any = true
+        end
+      end
     end
     if any then return map end
   end
@@ -180,7 +202,8 @@ local function updateManagerConfigFor(slot, itemId)
   if not AttachedEffectManager or not AttachedEffectManager.get then return end
   local map = getOffsetsFor(slot, itemId) or {}
   for i = 0, 3 do
-    local effId = makeEffectId(slot, itemId, i)
+    -- Update for first frame only (dir offsets are equal for all frames)
+    local effId = makeEffectId(slot, itemId, i, 0)
     local def = AttachedEffectManager.get(effId)
     if def then
       def.config = def.config or {}
@@ -197,37 +220,45 @@ end
 
 local function ensureEffects(slot, itemId, dirPaths)
   for i = 0, 3 do
-    local path = dirPaths[i]
-    if path then
-      local effId = makeEffectId(slot, itemId, i)
-      -- Prefer manager if available; fallback to direct registration
-      if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
-        AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, itemId))
-      elseif not g_attachedEffects.getById(effId) then
-        g_attachedEffects.registerByImage(effId, "paperdll", path, true)
-        local eff = g_attachedEffects.getById(effId)
-        if eff then
-          eff:setOnTop(true)
-          applyOffsetsForAllDirs(eff, slot, itemId)
+    local frames = dirPaths[i]
+    if frames and #frames > 0 then
+      for f = 1, #frames do
+        local path = frames[f]
+        local effId = makeEffectId(slot, itemId, i, f - 1)
+        -- Prefer manager if available; fallback to direct registration
+        if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
+          AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, itemId))
+        elseif not g_attachedEffects.getById(effId) then
+          g_attachedEffects.registerByImage(effId, "paperdll", path, true)
+          local eff = g_attachedEffects.getById(effId)
+          if eff then
+            eff:setOnTop(true)
+            applyOffsetsForAllDirs(eff, slot, itemId)
+          end
         end
       end
     end
   end
 end
 
-local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRestart, effectDir)
-  local wantedEffId = makeEffectId(slot, itemId, dirIdx)
-  if not dirPaths[dirIdx] then
+local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRestart, effectDir, frameIdx)
+  local frames = dirPaths[dirIdx]
+  if not frames or #frames == 0 then
     -- remap diagonals or missing dirs to nearest horizontal first, then south as fallback
     local mappedIdx = resolveDirIdxForEffect(INDEX_TO_DIR[dirIdx] or dirIdx)
-    if dirPaths[mappedIdx] then
-      wantedEffId = makeEffectId(slot, itemId, mappedIdx)
-    elseif dirPaths[2] then
-      wantedEffId = makeEffectId(slot, itemId, 2)
+    if dirPaths[mappedIdx] and #dirPaths[mappedIdx] > 0 then
+      frames = dirPaths[mappedIdx]
+      dirIdx = mappedIdx
+    elseif dirPaths[2] and #dirPaths[2] > 0 then
+      frames = dirPaths[2]
+      dirIdx = 2
     else
-      for i = 0, 3 do if dirPaths[i] then wantedEffId = makeEffectId(slot, itemId, i); break end end
+      for i = 0, 3 do if dirPaths[i] and #dirPaths[i] > 0 then frames = dirPaths[i]; dirIdx = i; break end end
     end
   end
+  local fIdx = frameIdx or 0
+  if frames and fIdx >= #frames then fIdx = 0 end
+  local wantedEffId = makeEffectId(slot, itemId, dirIdx, fIdx)
   local active = state.activeEffect[slot]
   if forceRestart or (active and active ~= wantedEffId) or (player.getAttachedEffectById and not player:getAttachedEffectById(wantedEffId)) then
     local eff = g_attachedEffects.getById(wantedEffId)
@@ -243,6 +274,8 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRest
         player:detachEffectById(active)
       end
       state.activeEffect[slot] = wantedEffId
+      state.frameIndex = state.frameIndex or {}
+      state.frameIndex[slot] = fIdx
     end
   else
     state.activeEffect[slot] = wantedEffId
@@ -299,6 +332,8 @@ end
 local controller = Controller:new()
 local lastDirIdx = nil
 local cycleName = "paperdoll_dir"
+local ANIM_MS = 150
+local lastFrameTick = 0
 
 local function isInvisible(outfit)
   -- Protocol sets invisible as: lookType=0 and lookTypeEx=0 -> auxType=13 (effect id)
@@ -627,7 +662,9 @@ function controller:onGameStart()
         for s, itemId in pairs(state.current) do
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
-            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false)
+            -- keep current frame when switching direction
+            local fIdx = (state.frameIndex and state.frameIndex[s]) or 0
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false, nil, fIdx)
           end
         end
         lastDirIdx = dirIdx
@@ -641,6 +678,20 @@ function controller:onGameStart()
         if itId ~= currId then
           updateSlotOverlay(p, s, it)
         end
+      end
+      -- Frame animation step for multi-frame assets
+      local now = g_clock.millis and g_clock.millis() or os.time() * 1000
+      if now - (lastFrameTick or 0) >= ANIM_MS then
+        for s, itemId in pairs(state.current) do
+          local dirPaths = findDirectionalPNGs(s, itemId)
+          local paths = dirPaths and dirPaths[dirIdx] or nil
+          if paths and #paths > 1 then
+            state.frameIndex = state.frameIndex or {}
+            local nextF = ((state.frameIndex[s] or 0) + 1) % #paths
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false, nil, nextF)
+          end
+        end
+        lastFrameTick = now
       end
     end, 100, cycleName)
   end
