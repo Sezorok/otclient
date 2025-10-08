@@ -188,3 +188,15 @@ function terminate() return moduleTerminate() end
 -- wrappers for .otmod hooks to avoid name collisions
 function calibrator_onLoad() return moduleInit() end
 function calibrator_onUnload() return moduleTerminate() end
+
+-- wrappers for OTUI callbacks (avoids sandbox/global resolution issues)
+function calibrator_onCalibratorSetup(w) return M.onCalibratorSetup(w) end
+function calibrator_onAdjustClick(axis, sign) return M.onAdjustClick(axis, sign) end
+function calibrator_onPerItemToggle(widget, checked) return M.onPerItemToggle(widget, checked) end
+function calibrator_onCloseCalibrator() return M.onCloseCalibrator() end
+function calibrator_onUseCurrentDir() return M.onUseCurrentDir() end
+function calibrator_onSaveOffsets() return M.onSaveOffsets() end
+function calibrator_onClearItem() return M.onClearItem() end
+function calibrator_onResetSlot() return M.onResetSlot() end
+function calibrator_onSlotPrev() return M.onSlotPrev() end
+function calibrator_onSlotNext() return M.onSlotNext() end

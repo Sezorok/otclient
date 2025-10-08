@@ -3,8 +3,8 @@ Window
   size: 480 260
   text: Paperdoll Calibrator
   movable: true
-  @onEscape: modules.game_paperdoll_calibrator.onCloseCalibrator()
-  @onSetup: modules.game_paperdoll_calibrator.onCalibratorSetup(self)
+  @onEscape: calibrator_onCloseCalibrator()
+  @onSetup: calibrator_onCalibratorSetup(self)
 
   UIWidget
     id: header
@@ -25,7 +25,7 @@ Window
       id: slotPrev
       text: <
       size: 28 24
-      @onClick: modules.game_paperdoll_calibrator.onSlotPrev()
+      @onClick: calibrator_onSlotPrev()
 
     UILabel
       id: slotValue
@@ -36,7 +36,7 @@ Window
       id: slotNext
       text: >
       size: 28 24
-      @onClick: modules.game_paperdoll_calibrator.onSlotNext()
+      @onClick: calibrator_onSlotNext()
 
     UILabel
       text: Step:
@@ -84,22 +84,22 @@ Window
       id: btnLeft
       text: <
       size: 40 28
-      @onClick: modules.game_paperdoll_calibrator.onAdjustClick('x', -1)
+      @onClick: calibrator_onAdjustClick('x', -1)
     Button
       id: btnRight
       text: >
       size: 40 28
-      @onClick: modules.game_paperdoll_calibrator.onAdjustClick('x', 1)
+      @onClick: calibrator_onAdjustClick('x', 1)
     Button
       id: btnUp
       text: ^
       size: 40 28
-      @onClick: modules.game_paperdoll_calibrator.onAdjustClick('y', -1)
+      @onClick: calibrator_onAdjustClick('y', -1)
     Button
       id: btnDown
       text: v
       size: 40 28
-      @onClick: modules.game_paperdoll_calibrator.onAdjustClick('y', 1)
+      @onClick: calibrator_onAdjustClick('y', 1)
 
   UIWidget
     id: infoRow
@@ -134,28 +134,28 @@ Window
       id: perItemCheck
       text: Per-item override
       checked: false
-      @onCheckChange: modules.game_paperdoll_calibrator.onPerItemToggle(self, checked)
+      @onCheckChange: calibrator_onPerItemToggle(self, checked)
     Button
       id: resetSlotBtn
       text: Reset Slot
-      @onClick: modules.game_paperdoll_calibrator.onResetSlot()
+      @onClick: calibrator_onResetSlot()
     Button
       id: exportBtn
       text: Export
-      @onClick: modules.game_paperdoll_calibrator.onExport()
+      @onClick: calibrator_onExport()
     Button
       id: useDirBtn
       text: Use current dir
-      @onClick: modules.game_paperdoll_calibrator.onUseCurrentDir()
+      @onClick: calibrator_onUseCurrentDir()
     Button
       id: saveBtn
       text: Save
-      @onClick: modules.game_paperdoll_calibrator.onSaveOffsets()
+      @onClick: calibrator_onSaveOffsets()
     Button
       id: clearItemBtn
       text: Clear Item
-      @onClick: modules.game_paperdoll_calibrator.onClearItem()
+      @onClick: calibrator_onClearItem()
     Button
       id: closeBtn
       text: Close
-      @onClick: modules.game_paperdoll_calibrator.onCloseCalibrator()
+      @onClick: calibrator_onCloseCalibrator()
