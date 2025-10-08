@@ -226,16 +226,17 @@ local function ensureEffects(slot, itemId, dirPaths)
         local path = frames[f]
         local effId = makeEffectId(slot, itemId, i, f - 1)
         -- Prefer manager if available; fallback to direct registration
-        if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
-          AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, itemId))
-        elseif not g_attachedEffects.getById(effId) then
-          g_attachedEffects.registerByImage(effId, "paperdll", path, true)
-          local eff = g_attachedEffects.getById(effId)
-          if eff then
-            eff:setOnTop(true)
-            applyOffsetsForAllDirs(eff, slot, itemId)
-          end
-        end
+      if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
+        AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, itemId))
+      end
+      if not g_attachedEffects.getById(effId) then
+        g_attachedEffects.registerByImage(effId, "paperdll", path, true)
+      end
+      local eff = g_attachedEffects.getById(effId)
+      if eff then
+        eff:setOnTop(true)
+        applyOffsetsForAllDirs(eff, slot, itemId)
+      end
       end
     end
   end
@@ -243,6 +244,10 @@ end
 
 local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRestart, effectDir, frameIdx)
   local frames = dirPaths[dirIdx]
+  -- If East not present but South is, some assets may encode East as South; try fallback
+  if (not frames or #frames == 0) and dirIdx == DIR_INDEX[East] then
+    frames = dirPaths[DIR_INDEX[South]]
+  end
   if not frames or #frames == 0 then
     -- remap diagonals or missing dirs to nearest horizontal first, then south as fallback
     local mappedIdx = resolveDirIdxForEffect(INDEX_TO_DIR[dirIdx] or dirIdx)
