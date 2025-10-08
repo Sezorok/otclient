@@ -300,7 +300,7 @@ local lastDirIdx = nil
 local cycleName = "paperdoll_dir"
 
 local function isInvisible(outfit)
-  -- Restore original heuristic: outfit.type == 0 and outfit.auxType == 13
+  -- Protocol sets invisible as: lookType=0 and lookTypeEx=0 -> auxType=13 (effect id)
   return outfit and outfit.type == 0 and outfit.auxType == 13
 end
 
@@ -316,10 +316,6 @@ end
 -- Module lifecycle wrappers to match .otmod hooks
 function init()
   controller:init()
-  -- Ensure attached effects module is available (manager or fallback)
-  if g_modules and g_modules.ensureModuleLoaded then
-    pcall(function() g_modules.ensureModuleLoaded('game_attachedeffects') end)
-  end
   -- ensure manager module is available for effect configs
   if g_modules and g_modules.ensureModuleLoaded then
     g_modules.ensureModuleLoaded('game_attachedeffects')
