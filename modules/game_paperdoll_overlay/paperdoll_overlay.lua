@@ -253,7 +253,8 @@ local function updateSlotOverlay(player, slot, item)
   if not slot then return end
   -- Do not (re)attach overlays while invisible
   local cid = player.getId and player:getId() or nil
-  if cid and invisByCreature[cid] then
+  local isInv = (player.isInvisible and player:isInvisible()) or (cid and invisByCreature[cid])
+  if isInv then
     if state.activeEffect[slot] then
       if player.detachEffectById then
         player:detachEffectById(state.activeEffect[slot])
@@ -554,7 +555,8 @@ function controller:onGameStart()
       -- LocalPlayer-only overlay management; other creatures handled by server effects
       local lp = g_game.getLocalPlayer()
       if not lp or creature ~= lp then return end
-      local inv = isInvisible(outfit)
+      -- Prefer engine-side invisibility flag for robustness; fallback to outfit heuristic
+      local inv = (creature.isInvisible and creature:isInvisible()) or isInvisible(outfit)
       local cid = creature:getId()
       if inv and not invisByCreature[cid] then
         detachAllOverlays(creature)
@@ -575,14 +577,17 @@ function controller:onGameStart()
     -- Guard against inconsistent slot bounds on some protocols
     local first = InventorySlotFirst or 1
     local last  = InventorySlotLast or InventorySlotPurse or 11
-    for s = first, last do
-      updateSlotOverlay(p, s, p:getInventoryItem(s))
+    -- Skip initial attach while invisible
+    if not (p.isInvisible and p:isInvisible()) then
+      for s = first, last do
+        updateSlotOverlay(p, s, p:getInventoryItem(s))
+      end
     end
     -- React to manual walk start to keep overlays aligned while walking
     self:registerEvents(g_game, {
       onWalk = function(_direction)
         local cid = p.getId and p:getId() or nil
-        if cid and invisByCreature[cid] then return end
+        if (p.isInvisible and p:isInvisible()) or (cid and invisByCreature[cid]) then return end
         -- Use creature facing (cardinal), ignore diagonal params
         local dir = p.getDirection and p:getDirection() or South
         local dirIdx = resolveDirIdxForEffect(dir)
@@ -596,7 +601,7 @@ function controller:onGameStart()
       end,
       onAutoWalk = function(player, dirs)
         local cid = p.getId and p:getId() or nil
-        if cid and invisByCreature[cid] then return end
+        if (p.isInvisible and p:isInvisible()) or (cid and invisByCreature[cid]) then return end
         local dir = p.getDirection and p:getDirection() or South
         local dirIdx = resolveDirIdxForEffect(dir)
         for s, itemId in pairs(state.current) do
@@ -610,7 +615,7 @@ function controller:onGameStart()
     self:cycleEvent(function()
       if not g_game.isOnline() then return end
       local cid = p.getId and p:getId() or nil
-      if cid and invisByCreature[cid] then
+      if (p.isInvisible and p:isInvisible()) or (cid and invisByCreature[cid]) then
         -- While invisible, skip direction switches and inventory re-attach attempts
         return
       end
