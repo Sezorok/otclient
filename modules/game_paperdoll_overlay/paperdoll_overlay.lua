@@ -606,6 +606,7 @@ function controller:onGameStart()
     end
     ,
     onWalk = function(oldPos, newPos)
+      local p = g_game.getLocalPlayer(); if not p then return end
       local cid = p.getId and p:getId() or nil
       if (p.isInvisible and p:isInvisible()) or (cid and invisByCreature[cid]) then return end
       local dir = p.getDirection and p:getDirection() or South
