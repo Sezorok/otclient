@@ -660,3 +660,56 @@ end
 function terminate()
   controller:terminate()
 end
+
+-- Lightweight testing helpers (console)
+-- NOTE: These helpers do not persist state and are safe to use locally
+
+function paperdoll_refresh_all()
+  local p = g_game.getLocalPlayer(); if not p then return end
+  local first = InventorySlotFirst or 1
+  local last  = InventorySlotLast or InventorySlotPurse or 11
+  local cid = p.getId and p:getId() or nil
+  local isInv = (p.isInvisible and p:isInvisible()) or (cid and invisByCreature[cid])
+  if isInv then
+    detachAllOverlays(p)
+    return
+  end
+  for s = first, last do
+    updateSlotOverlay(p, s, p:getInventoryItem(s))
+  end
+end
+
+function paperdoll_scan_current()
+  local p = g_game.getLocalPlayer(); if not p then return end
+  local first = InventorySlotFirst or 1
+  local last  = InventorySlotLast or InventorySlotPurse or 11
+  for s = first, last do
+    local it = p:getInventoryItem(s)
+    if it then
+      local itemId = it:getId()
+      local dirPaths = findDirectionalPNGs(s, itemId)
+      local slotName = getSlotName(s) or tostring(s)
+      if next(dirPaths) == nil then
+        print(string.format("paperdoll: slot=%s itemId=%d => no overlay images found", slotName, itemId))
+      else
+        local present = {}
+        for i = 0, 3 do if dirPaths[i] then table.insert(present, i) end end
+        print(string.format("paperdoll: slot=%s itemId=%d dirs=%s", slotName, itemId, table.concat(present,",")))
+      end
+    end
+  end
+end
+
+function paperdoll_simulate_invisibility(flag)
+  local p = g_game.getLocalPlayer(); if not p then return end
+  local cid = p.getId and p:getId() or nil
+  if not cid then return end
+  if flag then
+    invisByCreature[cid] = true
+    detachAllOverlays(p)
+  else
+    invisByCreature[cid] = false
+    paperdoll_refresh_all()
+  end
+  print(string.format("paperdoll: simulate invisibility => %s", flag and 'ON' or 'OFF'))
+end
