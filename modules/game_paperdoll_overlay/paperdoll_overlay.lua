@@ -608,6 +608,11 @@ function paperdoll_nudge_slot_item(slotName, itemId, dirKey, dx, dy)
   return v
 end
 
+function paperdoll_nudge_slot_item_current(slotName, itemId, dx, dy)
+  local dk = getCurrentDirKey()
+  return paperdoll_nudge_slot_item(slotName, itemId, dk, dx, dy)
+end
+
 function controller:onGameStart()
   self:registerEvents(LocalPlayer, {
     onInventoryChange = function(player, slot, item, oldItem)
