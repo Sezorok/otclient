@@ -581,6 +581,33 @@ function paperdoll_clear_body_item_offsets()
   saveOffsets(); updateManagerConfigFor(InventorySlotBody, it:getId()); applyOffsetsToActive(InventorySlotBody)
 end
 
+-- Generic slot nudges (default and per-item) for live tuning of any slot
+function paperdoll_nudge_slot_default(slotName, dirKey, dx, dy)
+  local v = nudgeSlotDefault(slotName, dirKey, dx, dy)
+  saveOffsets()
+  local targetSlot; for k, name in pairs(SLOT_DIR) do if name == slotName then targetSlot = k break end end
+  if targetSlot then
+    applyOffsetsToActive(targetSlot)
+    local p = g_game.getLocalPlayer()
+    if p then
+      local it = p:getInventoryItem(targetSlot)
+      if it then updateManagerConfigFor(targetSlot, it:getId()) end
+    end
+  end
+  return v
+end
+
+function paperdoll_nudge_slot_item(slotName, itemId, dirKey, dx, dy)
+  local v = nudgeSlotItem(slotName, itemId, dirKey, dx, dy)
+  saveOffsets()
+  local targetSlot; for k, name in pairs(SLOT_DIR) do if name == slotName then targetSlot = k break end end
+  if targetSlot then
+    updateManagerConfigFor(targetSlot, itemId)
+    applyOffsetsToActive(targetSlot)
+  end
+  return v
+end
+
 function controller:onGameStart()
   self:registerEvents(LocalPlayer, {
     onInventoryChange = function(player, slot, item, oldItem)
