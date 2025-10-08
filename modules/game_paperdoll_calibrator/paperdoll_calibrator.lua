@@ -60,7 +60,8 @@ function M.open()
   if not g_ui or not g_ui.getRootWidget then return end
   local root = g_ui.getRootWidget()
   if M._wnd and M._wnd:isVisible() then M._wnd:raise(); M._wnd:focus(); return end
-  local w = (g_ui.displayUI and g_ui.displayUI('paperdoll_calibrator')) or g_ui.loadUI('/game_paperdoll_calibrator/paperdoll_calibrator', root) or g_ui.loadUI('paperdoll_calibrator', root)
+  -- Load explicitly from this module to avoid resolving a theme with same name
+  local w = g_ui.loadUI('/game_paperdoll_calibrator/paperdoll_calibrator', root)
   if w then
     w:show(); w:raise(); w:focus()
     M.onCalibratorSetup(w)

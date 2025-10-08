@@ -300,7 +300,7 @@ local lastDirIdx = nil
 local cycleName = "paperdoll_dir"
 
 local function isInvisible(outfit)
-  -- Protocol sets invisible as: lookType=0 and lookTypeEx=0 -> auxType=13 (effect id)
+  -- Restore original heuristic: outfit.type == 0 and outfit.auxType == 13
   return outfit and outfit.type == 0 and outfit.auxType == 13
 end
 
