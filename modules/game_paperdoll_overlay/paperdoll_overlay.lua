@@ -244,9 +244,9 @@ end
 
 local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRestart, effectDir, frameIdx)
   local frames = dirPaths[dirIdx]
-  -- If East not present but South is, some assets may encode East as South; try fallback
+  -- If East not present but South or West is, some assets may encode East incorrectly; try fallbacks
   if (not frames or #frames == 0) and dirIdx == DIR_INDEX[East] then
-    frames = dirPaths[DIR_INDEX[South]]
+    frames = dirPaths[DIR_INDEX[South]] or dirPaths[DIR_INDEX[West]] or frames
   end
   if not frames or #frames == 0 then
     -- remap diagonals or missing dirs to nearest horizontal first, then south as fallback
@@ -331,7 +331,7 @@ local function updateSlotOverlay(player, slot, item)
 
   local dir = player.getDirection and player:getDirection() or South
   local dirIdx = DIR_INDEX[dir] or 2
-  switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
+  switchDirEffect(player, slot, itemId, dirIdx, dirPaths, false, dir)
 end
 
 local controller = Controller:new()
