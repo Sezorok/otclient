@@ -127,10 +127,9 @@ end
 
 loadModules()
 
--- Ensure paperdoll overlay and calibrator are loaded in dev sessions
+-- Ensure paperdoll overlay is loaded; calibrator stays opt-in
 pcall(function()
   if g_modules and g_modules.ensureModuleLoaded then
     g_modules.ensureModuleLoaded('game_paperdoll_overlay')
-    g_modules.ensureModuleLoaded('game_paperdoll_calibrator')
   end
 end)

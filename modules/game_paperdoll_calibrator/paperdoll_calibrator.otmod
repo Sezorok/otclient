@@ -4,7 +4,7 @@ Module
   author: You
   sandboxed: true
   reloadable: true
-  autoload: true
+  autoload: false
   scripts: [ paperdoll_calibrator ]
   @onLoad: calibrator_onLoad()
   @onUnload: calibrator_onUnload()
