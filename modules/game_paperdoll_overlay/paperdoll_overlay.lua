@@ -332,8 +332,7 @@ end
 local controller = Controller:new()
 local lastDirIdx = nil
 local cycleName = "paperdoll_dir"
-local ANIM_MS = 150
-local lastFrameTick = 0
+-- advance multi-frame overlays only on walking steps (no idle timer)
 
 local function isInvisible(outfit)
   -- Protocol sets invisible as: lookType=0 and lookTypeEx=0 -> auxType=13 (effect id)
@@ -605,6 +604,25 @@ function controller:onGameStart()
         invisByCreature[cid] = false
       end
     end
+    ,
+    onWalk = function(oldPos, newPos)
+      local cid = p.getId and p:getId() or nil
+      if (p.isInvisible and p:isInvisible()) or (cid and invisByCreature[cid]) then return end
+      local dir = p.getDirection and p:getDirection() or South
+      local dirIdx = resolveDirIdxForEffect(dir)
+      for s, itemId in pairs(state.current) do
+        local dirPaths = findDirectionalPNGs(s, itemId)
+        local frames = dirPaths and dirPaths[dirIdx] or nil
+        if frames and #frames > 1 then
+          state.frameIndex = state.frameIndex or {}
+          local nextF = ((state.frameIndex[s] or 0) + 1) % #frames
+          switchDirEffect(p, s, itemId, dirIdx, dirPaths, false, nil, nextF)
+        end
+      end
+    end,
+    onWalkFinish = function(player)
+      -- no-op; frames freeze automatically when onWalk is not firing
+    end
   }):execute()
 
   local p = g_game.getLocalPlayer()
@@ -678,20 +696,6 @@ function controller:onGameStart()
         if itId ~= currId then
           updateSlotOverlay(p, s, it)
         end
-      end
-      -- Frame animation step for multi-frame assets
-      local now = g_clock.millis and g_clock.millis() or os.time() * 1000
-      if now - (lastFrameTick or 0) >= ANIM_MS then
-        for s, itemId in pairs(state.current) do
-          local dirPaths = findDirectionalPNGs(s, itemId)
-          local paths = dirPaths and dirPaths[dirIdx] or nil
-          if paths and #paths > 1 then
-            state.frameIndex = state.frameIndex or {}
-            local nextF = ((state.frameIndex[s] or 0) + 1) % #paths
-            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false, nil, nextF)
-          end
-        end
-        lastFrameTick = now
       end
     end, 100, cycleName)
   end
