@@ -399,15 +399,15 @@ function setSlotOffsets(slotName, map)
   loadOffsets()
   OFFSETS[slotName] = OFFSETS[slotName] or {}
   OFFSETS[slotName].default = map
-  -- live apply if current slot matches
-  if slotName == 'head' then applyOffsetsToActive(InventorySlotHead) end
-  if slotName == 'body' then applyOffsetsToActive(InventorySlotBody) end
+  -- live apply for any known slot
   local p = g_game.getLocalPlayer()
-  if p then
-    local slot = slotName == 'head' and InventorySlotHead or slotName == 'body' and InventorySlotBody or nil
-    if slot then
-      local it = p:getInventoryItem(slot)
-      if it then updateManagerConfigFor(slot, it:getId()) end
+  local targetSlot
+  for k, name in pairs(SLOT_DIR) do if name == slotName then targetSlot = k break end end
+  if targetSlot then
+    applyOffsetsToActive(targetSlot)
+    if p then
+      local it = p:getInventoryItem(targetSlot)
+      if it then updateManagerConfigFor(targetSlot, it:getId()) end
     end
   end
 end
@@ -417,10 +417,12 @@ function setItemOffsets(slotName, itemId, map)
   OFFSETS[slotName] = OFFSETS[slotName] or {}
   OFFSETS[slotName].items = OFFSETS[slotName].items or {}
   OFFSETS[slotName].items[tostring(itemId)] = map
-  if slotName == 'head' then applyOffsetsToActive(InventorySlotHead) end
-  if slotName == 'body' then applyOffsetsToActive(InventorySlotBody) end
-  local slot = slotName == 'head' and InventorySlotHead or slotName == 'body' and InventorySlotBody or nil
-  if slot then updateManagerConfigFor(slot, itemId) end
+  local targetSlot
+  for k, name in pairs(SLOT_DIR) do if name == slotName then targetSlot = k break end end
+  if targetSlot then
+    applyOffsetsToActive(targetSlot)
+    updateManagerConfigFor(targetSlot, itemId)
+  end
 end
 
 function savePaperdollOffsets()
