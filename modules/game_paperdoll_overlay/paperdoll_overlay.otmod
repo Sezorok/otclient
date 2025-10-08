@@ -3,6 +3,9 @@ Module
   description: Paperdoll overlay via images (paperdll)
   author: You
   sandboxed: true
+  autoload: true
+  autoload-priority: 1200
+  dependencies: [ game_attachedeffects ]
   scripts: [ paperdoll_overlay ]
   @onLoad: init()
   @onUnload: terminate()
