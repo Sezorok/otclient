@@ -53,13 +53,13 @@ PaperdollCalibratorWindow < MainWindow
     Panel
       id: northRow
       layout: horizontalBox
-      Text
+      Label
         text: N X
         width: 28
       TextEdit
         id: northX
         width: 60
-      Text
+      Label
         text: Y
         width: 16
       TextEdit
@@ -69,13 +69,13 @@ PaperdollCalibratorWindow < MainWindow
     Panel
       id: eastRow
       layout: horizontalBox
-      Text
+      Label
         text: E X
         width: 28
       TextEdit
         id: eastX
         width: 60
-      Text
+      Label
         text: Y
         width: 16
       TextEdit
@@ -85,13 +85,13 @@ PaperdollCalibratorWindow < MainWindow
     Panel
       id: southRow
       layout: horizontalBox
-      Text
+      Label
         text: S X
         width: 28
       TextEdit
         id: southX
         width: 60
-      Text
+      Label
         text: Y
         width: 16
       TextEdit
@@ -101,13 +101,13 @@ PaperdollCalibratorWindow < MainWindow
     Panel
       id: westRow
       layout: horizontalBox
-      Text
+      Label
         text: W X
         width: 28
       TextEdit
         id: westX
         width: 60
-      Text
+      Label
         text: Y
         width: 16
       TextEdit
@@ -129,19 +129,19 @@ PaperdollCalibratorWindow < MainWindow
 
       Button
         id: btnUp
-        text: 
+        text: Up
         width: 40
       Button
         id: btnLeft
-        text: 
+        text: Left
         width: 40
       Button
         id: btnRight
-        text: 
+        text: Right
         width: 40
       Button
         id: btnDown
-        text: 
+        text: Down
         width: 40
 
   Panel
