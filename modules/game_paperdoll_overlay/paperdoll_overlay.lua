@@ -686,11 +686,18 @@ function controller:onGameStart()
       local dirIdx = resolveDirIdxForEffect(dir)
       -- adicionado por cursors: animar somente quando andando (ou nos ~350ms após um passo)
       local isWalking = false
+      local stepProgress = 0
       do
         local lp = g_game.getLocalPlayer()
-        if lp and lp.isWalking and lp:isWalking() then
-          isWalking = true
-        else
+        if lp then
+          if lp.isWalking and lp:isWalking() then isWalking = true end
+          if lp.getStepProgress then
+            stepProgress = lp:getStepProgress() or 0
+            -- se há progresso de passo, considere em movimento
+            if stepProgress > 0 and stepProgress < 1 then isWalking = true end
+          end
+        end
+        if not isWalking then
           local now = g_clock.millis()
           isWalking = (now - (lastWalkAtMs or 0)) < 350
         end
@@ -706,7 +713,16 @@ function controller:onGameStart()
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
             -- se parado, reutiliza o último frame escolhido para o slot
-            local useFrame = isWalking and advanceFrame or state.frameIdx[s] or 0
+            -- sincronizar velocidade: se possível, derive do stepDuration
+            local useFrame = state.frameIdx[s] or 0
+            if isWalking then
+              local lp = g_game.getLocalPlayer()
+              local stepDuration = (lp and lp.getStepDuration and lp:getStepDuration()) or 600
+              local framesPerStep = 3
+              local msPerFrame = math.max(80, math.floor(stepDuration / framesPerStep))
+              local now = g_clock.millis()
+              useFrame = math.floor((now % (framesPerStep * msPerFrame)) / msPerFrame) % framesPerStep
+            end
             switchDirEffect(p, s, itemId, dirIdx, dirPaths, false, nil, useFrame)
           end
         end
