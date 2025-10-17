@@ -46,7 +46,7 @@ local function applyDefaultOffsets(eff)
   eff:setDirOffset(West, -6, -4, true)
 end
 
-local state = { current = {}, activeEffect = {} }
+local state = { current = {}, activeEffect = {}, frameIdx = {} }
 -- must be defined before functions to be captured as upvalue
 local invisByCreature = {}
 
@@ -288,9 +288,12 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRest
         player:detachEffectById(active)
       end
       state.activeEffect[slot] = wantedEffId
+      -- adicionado por cursors: memorizar frame atual para congelar quando parado
+      state.frameIdx[slot] = fIdx
     end
   else
     state.activeEffect[slot] = wantedEffId
+    state.frameIdx[slot] = fIdx
   end
 end
 
@@ -675,15 +678,21 @@ function controller:onGameStart()
       for s, _ in pairs(state.current) do applyOffsetsToActive(s) end
       local dir = p.getDirection and p:getDirection() or South
       local dirIdx = resolveDirIdxForEffect(dir)
-      -- adicionado por cursors: se houver múltiplos frames, avance-os em loop leve
-      -- OBS: usar divisão comum para compatibilidade com LuaJIT (sem operador // do Lua 5.3)
-      local advanceFrame = (math.floor(g_clock.millis() / 200) % 3) -- 3 frames a cada ~200ms
+      -- adicionado por cursors: animar apenas quando estiver andando; parado mantém último frame
+      local isWalking = g_game.isWalking and g_game:isWalking() or false
+      local advanceFrame = 0
+      if isWalking then
+        -- OBS: usar divisão comum para compatibilidade com LuaJIT (sem operador // do Lua 5.3)
+        advanceFrame = (math.floor(g_clock.millis() / 200) % 3)
+      end
       if dirIdx ~= lastDirIdx then advanceFrame = 0 end
       for s, itemId in pairs(state.current) do
         if not slotDisabled(s) then
           local dirPaths = findDirectionalPNGs(s, itemId)
           if next(dirPaths) ~= nil then
-            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false, nil, advanceFrame)
+            -- se parado, reutiliza o último frame escolhido para o slot
+            local useFrame = isWalking and advanceFrame or state.frameIdx[s] or 0
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false, nil, useFrame)
           end
         end
       end
