@@ -39,15 +39,17 @@ function importResources(dir, type, device)
         end
     end
 
-    -- try load device specific resources
+    -- try load device specific resources (avoid corelib helpers to prevent early dependency)
     if device then
         local devicePath = g_platform.getDeviceShortName(device.type)
         if devicePath ~= "" then
-            table.insertall(files, importResources(dir .. '/' .. devicePath, type))
+            local more = importResources(dir .. '/' .. devicePath, type)
+            if type(more) == 'table' then for _, v in ipairs(more) do table.insert(files, v) end end
         end
         local osPath = g_platform.getOsShortName(device.os)
         if osPath ~= "" then
-            table.insertall(files, importResources(dir .. '/' .. osPath, type))
+            local more = importResources(dir .. '/' .. osPath, type)
+            if type(more) == 'table' then for _, v in ipairs(more) do table.insert(files, v) end end
         end
         return
     end
