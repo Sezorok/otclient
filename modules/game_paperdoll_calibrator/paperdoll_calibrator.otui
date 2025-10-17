@@ -117,11 +117,9 @@ PaperdollCalibratorWindow < MainWindow
     UICheckBox
       id: onTopAll
       text: Draw on top
-      anchors.left: parent.left
 
     Panel
       id: nudges
-      anchors.right: parent.right
       layout: grid
       cell-size: 40 24
       cell-spacing: 2
