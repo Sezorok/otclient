@@ -5,6 +5,4 @@ Module
   sandboxed: true
   autoload: false
   dependencies: [ game_interface, game_paperdoll_overlay ]
-  scripts: [ paperdoll_calibrator ]
-  @onLoad: init()
-  @onUnload: terminate()
+  scripts: []
