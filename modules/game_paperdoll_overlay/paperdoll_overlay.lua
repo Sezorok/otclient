@@ -460,13 +460,7 @@ function paperdoll_nudge_body(dirKey, dx, dy)
   local dirIdx = resolveDirIdxForEffect(dir)
     -- re-apply offsets directly to active effect to avoid manager resets
     applyOffsetsToActive(InventorySlotBody)
-    local item = p:getInventoryItem(InventorySlotBody)
-    if item then
-      local paths = findDirectionalPNGs(InventorySlotBody, item:getId())
-      if next(paths) ~= nil then
-        switchDirEffect(p, InventorySlotBody, item:getId(), dirIdx, paths, true)
-      end
-    end
+    -- avoid reattaching effects to prevent duplicates; offsets apply live
   end
   return v
 end
@@ -483,13 +477,7 @@ function paperdoll_nudge_head(dirKey, dx, dy)
   local dir = p.getDirection and p:getDirection() or South
   local dirIdx = resolveDirIdxForEffect(dir)
     applyOffsetsToActive(InventorySlotHead)
-    local item = p:getInventoryItem(InventorySlotHead)
-    if item then
-      local paths = findDirectionalPNGs(InventorySlotHead, item:getId())
-      if next(paths) ~= nil then
-        switchDirEffect(p, InventorySlotHead, item:getId(), dirIdx, paths, true)
-      end
-    end
+    -- avoid reattaching effects to prevent duplicates; offsets apply live
   end
   return v
 end
@@ -507,12 +495,19 @@ end
 
 function paperdoll_nudge_body_current(dx, dy)
   local dk = getCurrentDirKey()
-  return paperdoll_nudge_body(dk, dx, dy)
+  -- Only change current facing direction values; preserve others untouched
+  local v = nudgeSlotDefault('body', dk, dx, dy)
+  saveOffsets()
+  applyOffsetsToActive(InventorySlotBody)
+  return v
 end
 
 function paperdoll_nudge_head_current(dx, dy)
   local dk = getCurrentDirKey()
-  return paperdoll_nudge_head(dk, dx, dy)
+  local v = nudgeSlotDefault('head', dk, dx, dy)
+  saveOffsets()
+  applyOffsetsToActive(InventorySlotHead)
+  return v
 end
 
 function paperdoll_print_current_dir()
