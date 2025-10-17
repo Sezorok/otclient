@@ -203,6 +203,12 @@ function table.insertall(t, s)
     end
 end
 
+-- Backwards/forwards compatibility alias: some codebases use insertAll (camelCase).
+-- Ensure both names are available to avoid runtime errors during bootstrap ordering.
+if not table.insertAll then
+    table.insertAll = table.insertall
+end
+
 function table.equals(t, comp)
     if type(t) == 'table' and type(comp) == 'table' then
         for k, v in pairs(t) do
