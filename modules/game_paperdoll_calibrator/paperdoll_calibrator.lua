@@ -1,6 +1,80 @@
 local controller = Controller:new()
 local ui = nil
 
+modules.game_paperdoll_calibrator = modules.game_paperdoll_calibrator or {}
+
+local function wireUI(win)
+  if not win then return end
+  local f = modules.game_paperdoll_overlay
+  local function get(id) return win:recursiveGetChildById(id) end
+  -- Populate slot options if needed
+  local slotBox = get('slotBox')
+  if slotBox and slotBox:getOptionsCount() == 0 then
+    local slots = { 'head','body','back','left','right','legs','feet','neck','finger','ammo','purse' }
+    for _, s in ipairs(slots) do slotBox:addOption(s, s) end
+  end
+  -- Populate step options
+  local stepBox = get('stepBox')
+  if stepBox and stepBox:getOptionsCount() == 0 then
+    stepBox:addOption('1', 1); stepBox:addOption('2', 2)
+    stepBox:addOption('5', 5); stepBox:addOption('10', 10)
+  end
+  -- Helpers
+  local invMap = { head=InventorySlotHead, neck=InventorySlotNeck, back=InventorySlotBack, body=InventorySlotBody,
+    right=InventorySlotRight, left=InventorySlotLeft, legs=InventorySlotLeg, feet=InventorySlotFeet,
+    finger=InventorySlotFinger, ammo=InventorySlotAmmo, purse=InventorySlotPurse }
+  local function currentSlot()
+    local o = slotBox and slotBox:getCurrentOption()
+    local s = (o and (o.data or o.text)) or 'body'
+    return tostring(s):lower()
+  end
+  local function readMap()
+    local function gv(id) local e=get(id); return tonumber(e and e:getText() or '0') or 0 end
+    local onTop = (get('onTopAll') and get('onTopAll'):isChecked()) or false
+    return { N={gv('northX'),gv('northY'),onTop}, E={gv('eastX'),gv('eastY'),onTop}, S={gv('southX'),gv('southY'),onTop}, W={gv('westX'),gv('westY'),onTop} }
+  end
+  -- Button handlers
+  local btnApply, btnSave, btnClear, btnClose = get('btnApply'), get('btnSave'), get('btnClear'), get('btnClose')
+  if btnApply then
+    btnApply.onClick = function()
+      local slot = currentSlot()
+      local perItem = (get('perItemCheck') and get('perItemCheck'):isChecked()) or false
+      local map = readMap()
+      if perItem then
+        local p = g_game.getLocalPlayer(); local it = p and p:getInventoryItem(invMap[slot])
+        if it and f and f.paperdoll_set_item_offsets then f.paperdoll_set_item_offsets(slot, it:getId(), map, true) end
+      else
+        if f and f.paperdoll_set_slot_offsets then f.paperdoll_set_slot_offsets(slot, map, true) end
+      end
+    end
+  end
+  if btnSave then btnSave.onClick = function() if _G.savePaperdollOffsets then _G.savePaperdollOffsets() end end end
+  if btnClear then
+    btnClear.onClick = function()
+      local slot = currentSlot()
+      local p = g_game.getLocalPlayer(); local it = p and p:getInventoryItem(invMap[slot])
+      if it and f and f.paperdoll_clear_item_offsets then f.paperdoll_clear_item_offsets(slot, it:getId()) end
+    end
+  end
+  if btnClose then btnClose.onClick = function() win:destroy() end end
+end
+
+function modules.game_paperdoll_calibrator.openUI()
+  -- Try by name first (module-relative), fallback to absolute path
+  local ok, win = pcall(function() return g_ui.displayUI('paperdoll_calibrator') end)
+  if not (ok and win) then
+    g_ui.importStyle('/game_paperdoll_calibrator/paperdoll_calibrator.otui')
+    ok, win = pcall(function() return g_ui.loadUI('/game_paperdoll_calibrator/paperdoll_calibrator.otui', rootWidget) end)
+  end
+  if ok and win then
+    ui = win
+    wireUI(ui)
+    return ui
+  end
+  g_logger.warning('[paperdoll] Falha ao abrir UI do calibrador.')
+  return nil
+end
+
 -- State
 local state = {
   slot = 'head',           -- current slot name: 'head','body','left','right', etc.
@@ -161,72 +235,9 @@ end
 function init()
   controller:init()
   bindKeys()
-  -- Try load UI window (non-fatal if it fails)
-  local ok, win = pcall(function() return g_ui.displayUI('paperdoll_calibrator') end)
-  if ok and win then
-    ui = win
-    -- Populate slot combo
-    if ui.slotBox then
-      for name, _ in pairs(VALID_SLOTS) do
-        ui.slotBox:addOption(name, name)
-      end
-      ui.slotBox:setCurrentOptionByData(state.slot)
-      ui.slotBox.onOptionChange = function(widget, text, data) selectSlot(data) end
-    end
-    -- Step combo
-    if ui.stepBox then
-      ui.stepBox:addOption('1', 1)
-      ui.stepBox:addOption('2', 2)
-      ui.stepBox:addOption('5', 5)
-      ui.stepBox:addOption('10', 10)
-      ui.stepBox:setCurrentOptionByData(state.step)
-      ui.stepBox.onOptionChange = function(widget, text, data) state.step = tonumber(data) or 1 end
-    end
-    -- Per-item toggle
-    if ui.perItemCheck then
-      ui.perItemCheck:setChecked(state.perItem)
-      ui.perItemCheck.onCheckChange = function(_, checked) state.perItem = checked end
-    end
-    -- Load, Apply, Save, Clear, Close
-    if ui.btnLoad then
-      ui.btnLoad.onClick = function() end -- no-op (writer-first UI)
-    end
-    local function getXY()
-      if not ui then return { N={0,0,true},E={0,0,true},S={0,0,true},W={0,0,true} } end
-      local nX = tonumber(ui.northX and ui.northX:getText() or '0') or 0
-      local nY = tonumber(ui.northY and ui.northY:getText() or '0') or 0
-      local eX = tonumber(ui.eastX and ui.eastX:getText() or '0') or 0
-      local eY = tonumber(ui.eastY and ui.eastY:getText() or '0') or 0
-      local sX = tonumber(ui.southX and ui.southX:getText() or '0') or 0
-      local sY = tonumber(ui.southY and ui.southY:getText() or '0') or 0
-      local wX = tonumber(ui.westX and ui.westX:getText() or '0') or 0
-      local wY = tonumber(ui.westY and ui.westY:getText() or '0') or 0
-      local onTop = (ui.onTopAll and ui.onTopAll:isChecked()) and true or false
-      return { N={nX,nY,onTop}, E={eX,eY,onTop}, S={sX,sY,onTop}, W={wX,wY,onTop} }
-    end
-    if ui.btnApply then
-      ui.btnApply.onClick = function()
-        local map = getXY(); local slot = state.slot
-        if state.perItem then
-          local itemId = getCurrentItemId(slot)
-          if itemId and paperdoll_set_item_offsets then paperdoll_set_item_offsets(slot, itemId, map, true) end
-        else
-          if paperdoll_set_slot_offsets then paperdoll_set_slot_offsets(slot, map, true) end
-        end
-      end
-    end
-    if ui.btnSave then ui.btnSave.onClick = function() if _G['savePaperdollOffsets'] then _G['savePaperdollOffsets']() end end end
-    if ui.btnClear then ui.btnClear.onClick = function() clearItem() end end
-    if ui.btnClose then ui.btnClose.onClick = function() if ui then ui:destroy() ui = nil end end end
-    -- Nudge buttons
-    local function bumpBy(dx, dy) local dk = getCurrentDirKey(); nudge(state.slot, dk, dx, dy) end
-    if ui.btnUp then ui.btnUp.onClick = function() bumpBy(0,-1) end end
-    if ui.btnDown then ui.btnDown.onClick = function() bumpBy(0,1) end end
-    if ui.btnLeft then ui.btnLeft.onClick = function() bumpBy(-1,0) end end
-    if ui.btnRight then ui.btnRight.onClick = function() bumpBy(1,0) end end
-    g_logger.info('[paperdoll] Calibrator pronto. UI aberta e atalhos ativos.')
-  else
-    g_logger.warning('[paperdoll] Calibrator UI indisponível (seguindo com atalhos/console).')
+  -- Try open UI; continue headless if it fails
+  if not modules.game_paperdoll_calibrator.openUI() then
+    g_logger.warning('[paperdoll] Calibrator em modo headless (use comandos/atalhos).')
   end
 end
 
