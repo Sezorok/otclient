@@ -1,0 +1,9 @@
+Module
+  name: game_paperdoll_calibrator
+  description: Keyboard-driven calibrator for paperdoll offsets
+  author: You
+  sandboxed: true
+  dependencies: [ game_paperdoll_overlay, game_interface ]
+  scripts: [ paperdoll_calibrator ]
+  @onLoad: init()
+  @onUnload: terminate()

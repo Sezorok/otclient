@@ -545,6 +545,71 @@ function paperdoll_clear_body_item_offsets()
   saveOffsets(); updateManagerConfigFor(InventorySlotBody, it:getId()); applyOffsetsToActive(InventorySlotBody)
 end
 
+-- Generic helpers exported for external calibrators (non-invasive)
+-- Apply latest offsets to the active effect for the given slot name
+function paperdoll_apply_slot(slotName)
+  if not slotName or type(slotName) ~= 'string' then return end
+  local slotEnum = nil
+  for k, v in pairs(SLOT_DIR) do if v == slotName then slotEnum = k break end end
+  if slotEnum then
+    applyOffsetsToActive(slotEnum)
+  end
+end
+
+-- Update effect manager config for a specific slot/item, so dir offsets reflect live changes
+function paperdoll_update_manager_config(slotName, itemId)
+  if not slotName or type(slotName) ~= 'string' or not itemId then return end
+  local slotEnum = nil
+  for k, v in pairs(SLOT_DIR) do if v == slotName then slotEnum = k break end end
+  if slotEnum then
+    updateManagerConfigFor(slotEnum, itemId)
+  end
+end
+
+-- Set slot default offsets (wrapper) and optionally apply immediately
+function paperdoll_set_slot_offsets(slotName, map, applyNow)
+  if not slotName or type(slotName) ~= 'string' or type(map) ~= 'table' then return end
+  setSlotOffsets(slotName, map)
+  if applyNow then paperdoll_apply_slot(slotName) end
+end
+
+-- Set item-specific offsets (wrapper) and optionally apply/update manager
+function paperdoll_set_item_offsets(slotName, itemId, map, applyNow)
+  if not slotName or type(slotName) ~= 'string' or not itemId or type(map) ~= 'table' then return end
+  setItemOffsets(slotName, itemId, map)
+  if applyNow then
+    paperdoll_update_manager_config(slotName, itemId)
+    paperdoll_apply_slot(slotName)
+  end
+end
+
+-- Clear item-specific offsets for any slot (current equipped if itemId omitted)
+function paperdoll_clear_item_offsets(slotName, itemId)
+  if not slotName or type(slotName) ~= 'string' then return end
+  loadOffsets()
+  local slotEnum = nil
+  for k, v in pairs(SLOT_DIR) do if v == slotName then slotEnum = k break end end
+  if not slotEnum then return end
+  local id = itemId
+  if not id then
+    local p = g_game.getLocalPlayer(); if not p then return end
+    local it = p:getInventoryItem(slotEnum); if not it then return end
+    id = it:getId()
+  end
+  if not id then return end
+  OFFSETS[slotName] = OFFSETS[slotName] or {}
+  OFFSETS[slotName].items = OFFSETS[slotName].items or {}
+  OFFSETS[slotName].items[tostring(id)] = nil
+  saveOffsets()
+  paperdoll_update_manager_config(slotName, id)
+  applyOffsetsToActive(slotEnum)
+end
+
+-- Utility: returns current direction key ('N','E','S','W') for convenience
+function paperdoll_get_current_dir_key()
+  return getCurrentDirKey()
+end
+
 function controller:onGameStart()
   self:registerEvents(LocalPlayer, {
     onInventoryChange = function(player, slot, item, oldItem)
