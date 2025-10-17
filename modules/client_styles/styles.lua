@@ -17,7 +17,7 @@ end
 function terminate()
 end
 
-function importResources(dir, type, device)
+function importResources(dir, resType, device)
     local path = '/' .. dir .. '/'
   local files = g_resources.listDirectoryFiles(path)
   -- Ensure deterministic load order: numeric-prefixed files first (ascending),
@@ -34,8 +34,8 @@ function importResources(dir, type, device)
     return sa < sb
   end)
     for _, file in pairs(files) do
-        if g_resources.isFileType(file, type) then
-            resourceLoaders[type](path .. file)
+        if g_resources.isFileType(file, resType) then
+            resourceLoaders[resType](path .. file)
         end
     end
 
@@ -43,13 +43,13 @@ function importResources(dir, type, device)
     if device then
         local devicePath = g_platform.getDeviceShortName(device.type)
         if devicePath ~= "" then
-            local more = importResources(dir .. '/' .. devicePath, type)
-            if type(more) == 'table' then for _, v in ipairs(more) do table.insert(files, v) end end
+            local more = importResources(dir .. '/' .. devicePath, resType)
+            if _G.type(more) == 'table' then for _, v in ipairs(more) do table.insert(files, v) end end
         end
         local osPath = g_platform.getOsShortName(device.os)
         if osPath ~= "" then
-            local more = importResources(dir .. '/' .. osPath, type)
-            if type(more) == 'table' then for _, v in ipairs(more) do table.insert(files, v) end end
+            local more = importResources(dir .. '/' .. osPath, resType)
+            if _G.type(more) == 'table' then for _, v in ipairs(more) do table.insert(files, v) end end
         end
         return
     end
