@@ -141,21 +141,45 @@ local function applyOffsetsToActive(slot)
   if eff.setDirection then eff:setDirection(dirResolved) end
 end
 
-local function makeEffectId(slot, itemId, dirIdx)
-  return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0)
+-- adicionado por cursors: suportar multi-frame por direção no id do efeito
+-- Mantém compatibilidade: frameIdx padrão = 0 preserva IDs antigos
+local function makeEffectId(slot, itemId, dirIdx, frameIdx)
+  local frame = frameIdx or 0
+  return SLOT_BASE[slot] + (itemId % 10000) + (dirIdx or 0) + (frame * 1000)
 end
 
 local BASE_DIRS = { "/images/paperdll/", "/images/paperdoll/" } -- support both spellings
 
+-- adicionado por cursors: localizar PNGs por direção com suporte a multi-frames
 local function findDirectionalPNGs(slot, itemId)
   local dirName = SLOT_DIR[slot]
   if not dirName then return {} end
   local map = {}
   for _, baseDir in ipairs(BASE_DIRS) do
     local any = false
+    -- Primeiro tenta padrão multi-frame: <id>_<dir>_<frame>.png
+    local foundMulti = false
+    for i = 0, 3 do
+      local frames = {}
+      local f = 0
+      -- limite razoável de frames para evitar loop infinito
+      while f <= 15 do
+        local path = string.format("%s%s/%d_%d_%d.png", baseDir, dirName, itemId, i, f)
+        if g_resources.fileExists(path) then
+          table.insert(frames, path)
+          any = true; foundMulti = true
+          f = f + 1
+        else
+          break
+        end
+      end
+      if #frames > 0 then map[i] = frames end
+    end
+    if foundMulti then return map end
+    -- Fallback para 1 frame por direção: <id>_<dir>.png
     for i = 0, 3 do
       local path = string.format("%s%s/%d_%d.png", baseDir, dirName, itemId, i)
-      if g_resources.fileExists(path) then map[i] = path; any = true end
+      if g_resources.fileExists(path) then map[i] = { path }; any = true end
     end
     if any then return map end
   end
@@ -205,39 +229,50 @@ local function updateManagerConfigFor(slot, itemId)
   end
 end
 
+-- adicionado por cursors: registrar efeitos para cada frame existente por direção
 local function ensureEffects(slot, itemId, dirPaths)
   for i = 0, 3 do
-    local path = dirPaths[i]
-    if path then
-      local effId = makeEffectId(slot, itemId, i)
-      -- Prefer manager if available; fallback to direct registration
-      if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
-        AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, itemId))
-      elseif not g_attachedEffects.getById(effId) then
-        g_attachedEffects.registerByImage(effId, "paperdll", path, true)
-        local eff = g_attachedEffects.getById(effId)
-        if eff then
-          eff:setOnTop(true)
-          applyOffsetsForAllDirs(eff, slot, itemId)
+    local frames = dirPaths[i]
+    if type(frames) == 'string' then frames = { frames } end
+    if type(frames) == 'table' then
+      for fIdx, path in ipairs(frames) do
+        local effId = makeEffectId(slot, itemId, i, (fIdx - 1))
+        if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
+          AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, itemId))
+        elseif not g_attachedEffects.getById(effId) then
+          g_attachedEffects.registerByImage(effId, "paperdll", path, true)
+          local eff = g_attachedEffects.getById(effId)
+          if eff then
+            eff:setOnTop(true)
+            applyOffsetsForAllDirs(eff, slot, itemId)
+          end
         end
       end
     end
   end
 end
 
-local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRestart, effectDir)
-  local wantedEffId = makeEffectId(slot, itemId, dirIdx)
-  if not dirPaths[dirIdx] then
+-- adicionado por cursors: trocar efeito considerando múltiplos frames
+local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRestart, effectDir, frameIdx)
+  local frames = dirPaths[dirIdx]
+  if type(frames) == 'string' then frames = { frames } end
+  local wantedDirIdx = dirIdx
+  if not frames or #frames == 0 then
     -- remap diagonals or missing dirs to nearest horizontal first, then south as fallback
     local mappedIdx = resolveDirIdxForEffect(INDEX_TO_DIR[dirIdx] or dirIdx)
     if dirPaths[mappedIdx] then
-      wantedEffId = makeEffectId(slot, itemId, mappedIdx)
+      wantedDirIdx = mappedIdx; frames = dirPaths[mappedIdx]
     elseif dirPaths[2] then
-      wantedEffId = makeEffectId(slot, itemId, 2)
+      wantedDirIdx = 2; frames = dirPaths[2]
     else
-      for i = 0, 3 do if dirPaths[i] then wantedEffId = makeEffectId(slot, itemId, i); break end end
+      for i = 0, 3 do if dirPaths[i] then wantedDirIdx = i; frames = dirPaths[i]; break end end
     end
   end
+  if type(frames) == 'string' then frames = { frames } end
+  local numFrames = (type(frames) == 'table') and #frames or 0
+  local fIdx = frameIdx or 0
+  if numFrames > 0 then fIdx = fIdx % numFrames end
+  local wantedEffId = makeEffectId(slot, itemId, wantedDirIdx, fIdx)
   local active = state.activeEffect[slot]
   if forceRestart or (active and active ~= wantedEffId) or (player.getAttachedEffectById and not player:getAttachedEffectById(wantedEffId)) then
     local eff = g_attachedEffects.getById(wantedEffId)
@@ -245,7 +280,7 @@ local function switchDirEffect(player, slot, itemId, dirIdx, dirPaths, forceRest
       -- Apply latest offsets at attach time so runtime changes take effect
       applyOffsetsForAllDirs(eff, slot, itemId)
       -- Ensure effect respects current facing direction for dir-specific offsets
-      local dirConst = effectDir or (INDEX_TO_DIR[dirIdx] or South)
+      local dirConst = effectDir or (INDEX_TO_DIR[wantedDirIdx] or South)
       if eff.setDirection then eff:setDirection(dirConst) end
       -- attach new first to avoid visual gap, then detach old if needed
       player:attachEffect(eff)
@@ -305,7 +340,8 @@ local function updateSlotOverlay(player, slot, item)
 
   local dir = player.getDirection and player:getDirection() or South
   local dirIdx = DIR_INDEX[dir] or 2
-  switchDirEffect(player, slot, itemId, dirIdx, dirPaths)
+  -- adicionado por cursors: iniciar no frame 0
+  switchDirEffect(player, slot, itemId, dirIdx, dirPaths, false, nil, 0)
 end
 
 local controller = Controller:new()
@@ -639,18 +675,18 @@ function controller:onGameStart()
       for s, _ in pairs(state.current) do applyOffsetsToActive(s) end
       local dir = p.getDirection and p:getDirection() or South
       local dirIdx = resolveDirIdxForEffect(dir)
-      if dirIdx ~= lastDirIdx then
-        for s, itemId in pairs(state.current) do
-          -- adicionado por cursors: pular slots desabilitados (ex.: back)
-          if not slotDisabled(s) then
-            local dirPaths = findDirectionalPNGs(s, itemId)
-            if next(dirPaths) ~= nil then
-              switchDirEffect(p, s, itemId, dirIdx, dirPaths, false)
-            end
+      -- adicionado por cursors: se houver múltiplos frames, avance-os em loop leve
+      local advanceFrame = ((g_clock.millis() // 200) % 3) -- 3 frames a cada ~200ms
+      if dirIdx ~= lastDirIdx then advanceFrame = 0 end
+      for s, itemId in pairs(state.current) do
+        if not slotDisabled(s) then
+          local dirPaths = findDirectionalPNGs(s, itemId)
+          if next(dirPaths) ~= nil then
+            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false, nil, advanceFrame)
           end
         end
-        lastDirIdx = dirIdx
       end
+      lastDirIdx = dirIdx
       -- Inventory sync: ensure overlays attach/detach even if onInventoryChange isn't fired
       for s = first, last do
         if not slotDisabled(s) then
