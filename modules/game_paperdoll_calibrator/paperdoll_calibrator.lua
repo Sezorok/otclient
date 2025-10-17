@@ -1,4 +1,5 @@
 local controller = Controller:new()
+local ui = nil
 
 -- State
 local state = {
@@ -160,9 +161,103 @@ end
 function init()
   controller:init()
   bindKeys()
-  g_logger.info('[paperdoll] Calibrator pronto. Use Alt+Setas para ajustar. Alt+P alterna modo. Alt+S salva, Alt+C limpa do item atual.')
+  -- Load UI window
+  ui = g_ui.displayUI('paperdoll_calibrator')
+  -- Populate slot combo
+  local slotBox = ui.slotBox
+  for name, _ in pairs(VALID_SLOTS) do
+    slotBox:addOption(name, name)
+  end
+  slotBox:setCurrentOptionByData(state.slot)
+  slotBox.onOptionChange = function(widget, text, data)
+    selectSlot(data)
+  end
+  -- Step combo
+  local stepBox = ui.stepBox
+  stepBox:addOption('1', 1)
+  stepBox:addOption('2', 2)
+  stepBox:addOption('5', 5)
+  stepBox:addOption('10', 10)
+  stepBox:setCurrentOptionByData(state.step)
+  stepBox.onOptionChange = function(widget, text, data)
+    state.step = tonumber(data) or 1
+  end
+  -- Per-item toggle
+  ui.perItemCheck:setChecked(state.perItem)
+  ui.perItemCheck.onCheckChange = function(_, checked)
+    state.perItem = checked
+  end
+  -- Load, Apply, Save, Clear, Close
+  ui.btnLoad.onClick = function()
+    -- Fill fields from current offsets
+    local dk = getCurrentDirKey()
+    local function readOffsets(slotName)
+      local p = g_game.getLocalPlayer(); if not p then return {} end
+      local itemId = getCurrentItemId(slotName)
+      local map, _ = nil, false
+      if state.perItem and itemId and _G['paperdoll_set_item_offsets'] then
+        -- No direct getter available; leave empty to avoid misleading values
+        return {}
+      else
+        -- defaults not directly exposed; leave empty
+        return {}
+      end
+    end
+    -- No-op reader for now; UI fields are for writing primarily
+  end
+  local function getXY()
+    local nX = tonumber(ui.northX:getText()) or 0
+    local nY = tonumber(ui.northY:getText()) or 0
+    local eX = tonumber(ui.eastX:getText()) or 0
+    local eY = tonumber(ui.eastY:getText()) or 0
+    local sX = tonumber(ui.southX:getText()) or 0
+    local sY = tonumber(ui.southY:getText()) or 0
+    local wX = tonumber(ui.westX:getText()) or 0
+    local wY = tonumber(ui.westY:getText()) or 0
+    local onTop = ui.onTopAll:isChecked()
+    return {
+      N = { nX, nY, onTop },
+      E = { eX, eY, onTop },
+      S = { sX, sY, onTop },
+      W = { wX, wY, onTop },
+    }
+  end
+  ui.btnApply.onClick = function()
+    local map = getXY()
+    local slot = state.slot
+    if state.perItem then
+      local itemId = getCurrentItemId(slot)
+      if itemId and paperdoll_set_item_offsets then
+        paperdoll_set_item_offsets(slot, itemId, map, true)
+      end
+    else
+      if paperdoll_set_slot_offsets then
+        paperdoll_set_slot_offsets(slot, map, true)
+      end
+    end
+  end
+  ui.btnSave.onClick = function()
+    if _G['savePaperdollOffsets'] then _G['savePaperdollOffsets']() end
+  end
+  ui.btnClear.onClick = function()
+    clearItem()
+  end
+  ui.btnClose.onClick = function()
+    if ui then ui:destroy() ui = nil end
+  end
+  -- Nudge buttons apply on current facing dir using fields step
+  local function bumpBy(dx, dy)
+    local dk = getCurrentDirKey()
+    nudge(state.slot, dk, dx, dy)
+  end
+  ui.btnUp.onClick = function() bumpBy(0, -1) end
+  ui.btnDown.onClick = function() bumpBy(0, 1) end
+  ui.btnLeft.onClick = function() bumpBy(-1, 0) end
+  ui.btnRight.onClick = function() bumpBy(1, 0) end
+  g_logger.info('[paperdoll] Calibrator pronto. UI aberta e atalhos ativos.')
 end
 
 function terminate()
   controller:terminate()
+  if ui then ui:destroy() ui = nil end
 end

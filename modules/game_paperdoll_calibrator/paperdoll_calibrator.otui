@@ -1,0 +1,175 @@
+PaperdollCalibratorWindow < MainWindow
+  id: paperdollCalibrator
+  text: Paperdoll Calibrator
+  size: 420 300
+  image-source: /images/ui/window
+  image-border: 12
+
+  Panel
+    id: header
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    height: 34
+    padding: 6
+    layout:
+      type: horizontalBox
+      spacing: 6
+
+    QtComboBox
+      id: slotBox
+      width: 130
+
+    UICheckBox
+      id: perItemCheck
+      text: Per-item
+
+    QtComboBox
+      id: stepBox
+      width: 70
+
+    Button
+      id: btnLoad
+      text: Load
+      width: 60
+
+  Panel
+    id: body
+    anchors.top: header.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: footer.top
+    margin: 6
+    image-source: /images/ui/panel_flat
+    image-border: 1
+    padding: 6
+
+    layout:
+      type: grid
+      cell-size: 188 26
+      cell-spacing: 4
+      num-columns: 2
+
+    Panel
+      id: northRow
+      layout: horizontalBox
+      Text
+        text: N X
+        width: 28
+      TextEdit
+        id: northX
+        width: 60
+      Text
+        text: Y
+        width: 16
+      TextEdit
+        id: northY
+        width: 60
+
+    Panel
+      id: eastRow
+      layout: horizontalBox
+      Text
+        text: E X
+        width: 28
+      TextEdit
+        id: eastX
+        width: 60
+      Text
+        text: Y
+        width: 16
+      TextEdit
+        id: eastY
+        width: 60
+
+    Panel
+      id: southRow
+      layout: horizontalBox
+      Text
+        text: S X
+        width: 28
+      TextEdit
+        id: southX
+        width: 60
+      Text
+        text: Y
+        width: 16
+      TextEdit
+        id: southY
+        width: 60
+
+    Panel
+      id: westRow
+      layout: horizontalBox
+      Text
+        text: W X
+        width: 28
+      TextEdit
+        id: westX
+        width: 60
+      Text
+        text: Y
+        width: 16
+      TextEdit
+        id: westY
+        width: 60
+
+    UICheckBox
+      id: onTopAll
+      text: Draw on top
+      anchors.left: parent.left
+
+    Panel
+      id: nudges
+      anchors.right: parent.right
+      layout: grid
+      cell-size: 40 24
+      cell-spacing: 2
+      num-columns: 3
+
+      Button
+        id: btnUp
+        text: 
+        width: 40
+      Button
+        id: btnLeft
+        text: 
+        width: 40
+      Button
+        id: btnRight
+        text: 
+        width: 40
+      Button
+        id: btnDown
+        text: 
+        width: 40
+
+  Panel
+    id: footer
+    anchors.bottom: parent.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    height: 36
+    padding: 6
+
+    layout:
+      type: horizontalBox
+      spacing: 6
+      align-right: true
+
+    Button
+      id: btnApply
+      text: Apply
+      width: 70
+    Button
+      id: btnSave
+      text: Save
+      width: 70
+    Button
+      id: btnClear
+      text: Clear item
+      width: 90
+    Button
+      id: btnClose
+      text: Close
+      width: 70
