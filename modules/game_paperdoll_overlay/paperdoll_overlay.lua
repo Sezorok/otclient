@@ -521,6 +521,33 @@ function paperdoll_print_current_dir()
   print('current dir:', dir, 'key=', getCurrentDirKey())
 end
 
+-- Simple console helpers requested: nudge 1px on current facing for body/head
+function paperdoll_nudge_body_up()
+  return paperdoll_nudge_body_current(0, -1)
+end
+function paperdoll_nudge_body_down()
+  return paperdoll_nudge_body_current(0, 1)
+end
+function paperdoll_nudge_body_left()
+  return paperdoll_nudge_body_current(-1, 0)
+end
+function paperdoll_nudge_body_right()
+  return paperdoll_nudge_body_current(1, 0)
+end
+
+function paperdoll_nudge_head_up()
+  return paperdoll_nudge_head_current(0, -1)
+end
+function paperdoll_nudge_head_down()
+  return paperdoll_nudge_head_current(0, 1)
+end
+function paperdoll_nudge_head_left()
+  return paperdoll_nudge_head_current(-1, 0)
+end
+function paperdoll_nudge_head_right()
+  return paperdoll_nudge_head_current(1, 0)
+end
+
 -- Item-specific calibration helpers
 function paperdoll_nudge_body_item(dirKey, dx, dy)
   local p = g_game.getLocalPlayer(); if not p then return end
