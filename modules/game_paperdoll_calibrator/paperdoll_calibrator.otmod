@@ -3,6 +3,8 @@ Module
   description: Keyboard-driven calibrator for paperdoll offsets
   author: You
   sandboxed: true
+  autoload: true
+  autoload-priority: 900
   dependencies: [ game_paperdoll_overlay, game_interface ]
   scripts: [ paperdoll_calibrator ]
   @onLoad: init()
