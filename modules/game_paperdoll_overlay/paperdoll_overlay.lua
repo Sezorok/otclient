@@ -676,7 +676,8 @@ function controller:onGameStart()
       local dir = p.getDirection and p:getDirection() or South
       local dirIdx = resolveDirIdxForEffect(dir)
       -- adicionado por cursors: se houver múltiplos frames, avance-os em loop leve
-      local advanceFrame = ((g_clock.millis() // 200) % 3) -- 3 frames a cada ~200ms
+      -- OBS: usar divisão comum para compatibilidade com LuaJIT (sem operador // do Lua 5.3)
+      local advanceFrame = (math.floor(g_clock.millis() / 200) % 3) -- 3 frames a cada ~200ms
       if dirIdx ~= lastDirIdx then advanceFrame = 0 end
       for s, itemId in pairs(state.current) do
         if not slotDisabled(s) then
