@@ -19,7 +19,20 @@ end
 
 function importResources(dir, type, device)
     local path = '/' .. dir .. '/'
-    local files = g_resources.listDirectoryFiles(path)
+  local files = g_resources.listDirectoryFiles(path)
+  -- Ensure deterministic load order: numeric-prefixed files first (ascending),
+  -- then alphabetical. This guarantees base styles like '10-windows.otui'
+  -- are available before dependent styles (e.g., custom windows).
+  table.sort(files, function(a, b)
+    local function sortKey(f)
+      local num = tonumber(f:match('^(%d+)[-_]')) or math.huge
+      return num, f
+    end
+    local na, sa = sortKey(a)
+    local nb, sb = sortKey(b)
+    if na ~= nb then return na < nb end
+    return sa < sb
+  end)
     for _, file in pairs(files) do
         if g_resources.isFileType(file, type) then
             resourceLoaders[type](path .. file)
