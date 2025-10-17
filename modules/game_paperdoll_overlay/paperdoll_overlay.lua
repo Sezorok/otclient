@@ -543,6 +543,26 @@ function paperdoll_nudge_head_right()
   return paperdoll_nudge_head_current(1, 0)
 end
 
+-- Public helpers: rescan attachments and reset offsets
+function paperdoll_rescan()
+  local p = g_game.getLocalPlayer(); if not p then return end
+  -- ensure not invisible
+  local cid = p.getId and p:getId() or nil
+  if (p.isInvisible and p:isInvisible()) or (cid and invisByCreature[cid]) then return end
+  local first = InventorySlotFirst or 1
+  local last  = InventorySlotLast or InventorySlotPurse or 11
+  for s = first, last do
+    updateSlotOverlay(p, s, p:getInventoryItem(s))
+  end
+end
+
+function paperdoll_reset_offsets()
+  OFFSETS = nil
+  g_resources.writeFileContents(OFFSETS_PATH, '{}')
+  -- reapply defaults on current active effects
+  for s, _ in pairs(state.current) do applyOffsetsToActive(s) end
+end
+
 -- Item-specific calibration helpers
 function paperdoll_nudge_body_item(dirKey, dx, dy)
   local p = g_game.getLocalPlayer(); if not p then return end
