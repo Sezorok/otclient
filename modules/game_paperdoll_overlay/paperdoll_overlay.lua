@@ -26,6 +26,16 @@ local SLOT_BASE = {
   [InventorySlotPurse]  = 110000,
 }
 
+-- adicionado por cursors: desabilitar o slot 'back' temporariamente (presente, porém inoperante)
+local DISABLED_PAPERDOLL_SLOTS = {
+  [InventorySlotBack] = true,
+}
+
+-- adicionado por cursors: helper para verificar se um slot está desabilitado
+local function slotDisabled(slot)
+  return DISABLED_PAPERDOLL_SLOTS and DISABLED_PAPERDOLL_SLOTS[slot] or false
+end
+
 local DIR_INDEX = { [North] = 0, [East] = 1, [South] = 2, [West] = 3 }
 local INDEX_TO_DIR = { North, East, South, West }
 
@@ -251,6 +261,8 @@ end
 
 local function updateSlotOverlay(player, slot, item)
   if not slot then return end
+  -- adicionado por cursors: ignorar processamento de overlays para slots desabilitados (ex.: back)
+  if slotDisabled(slot) then return end
   -- Do not (re)attach overlays while invisible
   local cid = player.getId and player:getId() or nil
   local isInv = (player.isInvisible and player:isInvisible()) or (cid and invisByCreature[cid])
@@ -337,7 +349,8 @@ function init()
                 if g_resources.fileExists(path) then
                   local slot
                   for k, name in pairs(SLOT_DIR) do if name == dir then slot = k break end end
-                  if slot then
+                    -- adicionado por cursors: não registrar efeitos para slots desabilitados (ex.: back)
+                    if slot and not slotDisabled(slot) then
                     local effId = makeEffectId(slot, id, i)
                     if AttachedEffectManager and AttachedEffectManager.get and not AttachedEffectManager.get(effId) then
                       AttachedEffectManager.register(effId, "paperdll", path, ThingExternalTexture, buildEffectConfig(slot, id))
@@ -580,7 +593,10 @@ function controller:onGameStart()
     -- Skip initial attach while invisible
     if not (p.isInvisible and p:isInvisible()) then
       for s = first, last do
-        updateSlotOverlay(p, s, p:getInventoryItem(s))
+        -- adicionado por cursors: pular slots desabilitados (ex.: back)
+        if not slotDisabled(s) then
+          updateSlotOverlay(p, s, p:getInventoryItem(s))
+        end
       end
     end
     -- React to manual walk start to keep overlays aligned while walking
@@ -625,21 +641,26 @@ function controller:onGameStart()
       local dirIdx = resolveDirIdxForEffect(dir)
       if dirIdx ~= lastDirIdx then
         for s, itemId in pairs(state.current) do
-          local dirPaths = findDirectionalPNGs(s, itemId)
-          if next(dirPaths) ~= nil then
-            switchDirEffect(p, s, itemId, dirIdx, dirPaths, false)
+          -- adicionado por cursors: pular slots desabilitados (ex.: back)
+          if not slotDisabled(s) then
+            local dirPaths = findDirectionalPNGs(s, itemId)
+            if next(dirPaths) ~= nil then
+              switchDirEffect(p, s, itemId, dirIdx, dirPaths, false)
+            end
           end
         end
         lastDirIdx = dirIdx
       end
       -- Inventory sync: ensure overlays attach/detach even if onInventoryChange isn't fired
       for s = first, last do
-        local it = p:getInventoryItem(s)
-        local curr = state.current[s]
-        local currId = curr
-        local itId = it and it:getId() or nil
-        if itId ~= currId then
-          updateSlotOverlay(p, s, it)
+        if not slotDisabled(s) then
+          local it = p:getInventoryItem(s)
+          local curr = state.current[s]
+          local currId = curr
+          local itId = it and it:getId() or nil
+          if itId ~= currId then
+            updateSlotOverlay(p, s, it)
+          end
         end
       end
     end, 100, cycleName)
