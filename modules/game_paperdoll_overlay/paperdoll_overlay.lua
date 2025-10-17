@@ -47,6 +47,8 @@ local function applyDefaultOffsets(eff)
 end
 
 local state = { current = {}, activeEffect = {}, frameIdx = {} }
+-- adicionado por cursors: timestamp do último passo, para animar apenas enquanto há movimento
+local lastWalkAtMs = 0
 -- must be defined before functions to be captured as upvalue
 local invisByCreature = {}
 
@@ -641,6 +643,8 @@ function controller:onGameStart()
     -- React to manual walk start to keep overlays aligned while walking
     self:registerEvents(g_game, {
       onWalk = function(_direction)
+        -- adicionado por cursors: registrar último passo
+        lastWalkAtMs = g_clock.millis()
         local cid = p.getId and p:getId() or nil
         if (p.isInvisible and p:isInvisible()) or (cid and invisByCreature[cid]) then return end
         -- Use creature facing (cardinal), ignore diagonal params
@@ -655,6 +659,8 @@ function controller:onGameStart()
         end
       end,
       onAutoWalk = function(player, dirs)
+        -- adicionado por cursors: registrar último passo/auto-walk
+        lastWalkAtMs = g_clock.millis()
         local cid = p.getId and p:getId() or nil
         if (p.isInvisible and p:isInvisible()) or (cid and invisByCreature[cid]) then return end
         local dir = p.getDirection and p:getDirection() or South
@@ -678,8 +684,17 @@ function controller:onGameStart()
       for s, _ in pairs(state.current) do applyOffsetsToActive(s) end
       local dir = p.getDirection and p:getDirection() or South
       local dirIdx = resolveDirIdxForEffect(dir)
-      -- adicionado por cursors: animar apenas quando estiver andando; parado mantém último frame
-      local isWalking = g_game.isWalking and g_game:isWalking() or false
+      -- adicionado por cursors: animar somente quando andando (ou nos ~350ms após um passo)
+      local isWalking = false
+      do
+        local lp = g_game.getLocalPlayer()
+        if lp and lp.isWalking and lp:isWalking() then
+          isWalking = true
+        else
+          local now = g_clock.millis()
+          isWalking = (now - (lastWalkAtMs or 0)) < 350
+        end
+      end
       local advanceFrame = 0
       if isWalking then
         -- OBS: usar divisão comum para compatibilidade com LuaJIT (sem operador // do Lua 5.3)
